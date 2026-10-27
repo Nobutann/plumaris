@@ -93,16 +93,6 @@ O painel mostra gráficos de espécie, disponibilidade e faixas etárias calcula
 
 Para conferir a compilação e as regras de código, execute `npm run build` e `npm run lint`.
 
-## Testar a Etapa 04 automaticamente
-
-Com o banco preparado pelos scripts `01_criacao_e_insercao.sql`, `04_indices.sql` e `05_visoes.sql`, execute na raiz do projeto:
-
-```powershell
-.\testar-etapa-04.ps1 -IniciarBackend
-```
-
-Se `DB_PASSWORD` ainda não estiver definida, o script solicitará a senha do MySQL sem exibi-la. Ele compila os projetos, inicia temporariamente o backend, testa os quatro relatórios avançados e as duas visões e encerra o processo iniciado. Toda execução é registrada em `logs/teste-etapa-04-AAAAMMDD-HHMMSS.txt`. Use `-ArquivoLog resultado.txt` para escolher outro arquivo, `-ManterBackend` para deixar a API aberta após os testes ou `-PularBuild` para testar somente os endpoints.
-
 ## Contribuição
 
 Mantenha as mudanças pequenas e descreva como foram verificadas. As mensagens de commit seguem [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) e são escritas em inglês, por exemplo:
