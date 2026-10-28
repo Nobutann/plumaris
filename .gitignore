@@ -37,6 +37,7 @@
 
 # Logs e arquivos temporários
 **/*.log
+logs/
 **/*.tmp
 .DS_Store
 Thumbs.db

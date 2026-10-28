@@ -2,7 +2,7 @@
 
 Aplicação para consultar cães, gatos e os centros de adoção responsáveis por eles. O backend oferece uma API REST em Java; o frontend é uma aplicação independente em React e TypeScript.
 
-> **Estado:** primeira versão beta (`v0.1.0-beta.1`). O backend possui quatro consultas e operações de cadastro, alteração e exclusão de animais e raças. O frontend oferece painel com gráficos, manutenção de animais e raças e visualização das quatro consultas.
+> **Estado:** primeira versão beta (`v0.1.0-beta.1`). O backend possui as quatro consultas originais, quatro consultas avançadas, duas visões gerenciais e operações de cadastro, alteração e exclusão de animais e raças. O frontend oferece painel com gráficos, manutenção de animais e raças e visualização de todos esses relatórios.
 
 ## Estrutura
 
@@ -35,6 +35,10 @@ Com `adocao_bd` selecionado, execute os scripts nesta ordem:
 
 1. `database/01_criacao_tabelas.sql`
 2. `database/02_insercao_dados.sql`
+3. `database/04_indices.sql`
+4. `database/05_visoes.sql`
+
+Como alternativa aos dois primeiros passos, execute somente `database/01_criacao_e_insercao.sql`, que reúne a versão atual dos scripts de criação e inserção em um único arquivo. O arquivo `database/06_consultas_avancadas.sql` pode ser executado depois para conferir diretamente as quatro consultas da Etapa 04 e o conteúdo das duas visões.
 
 Os scripts de carga foram preparados para um banco vazio. A carga inicial contém 30 animais; confira com `SELECT COUNT(*) FROM Animal;`.
 
@@ -59,6 +63,15 @@ O servidor inicia na porta 8080. As rotas de consulta de animais são:
 
 Os campos das respostas JSON usam nomes em inglês. O SQL está explícito no repositório JDBC; as quatro consultas estão reunidas em `database/03_consultas.sql`. Para executar a quarta no Workbench com outro usuário, altere o valor de `@user_id` no arquivo.
 
+Os relatórios da Etapa 04 estão disponíveis nestas rotas:
+
+- `GET /api/relatorios/centros-sem-animais-disponiveis`: anti join de centros sem oferta ativa.
+- `GET /api/relatorios/cobertura-racas-animais`: full outer join emulado entre raças e animais.
+- `GET /api/relatorios/preferencias-nao-atendidas`: subconsulta com `NOT EXISTS`.
+- `GET /api/relatorios/animais-acima-media-idade`: subconsulta correlacionada por espécie.
+- `GET /api/relatorios/painel-centros`: dados da visão operacional dos centros.
+- `GET /api/relatorios/oferta-demanda-racas`: dados da visão de oferta e demanda por raça.
+
 `GET /api/centros` lista os centros de adoção disponíveis para o cadastro de animais.
 
 Para gerenciar animais, a API oferece também `GET /api/animais/{id}`, `POST /api/animais`, `PUT /api/animais/{id}` e `DELETE /api/animais/{id}`. Um corpo mínimo para criação ou alteração é `{"name":"Fido","species":"Cao","available":true,"centerId":32}`. O centro deve existir; `breedId` é opcional e, quando informado, precisa pertencer à mesma espécie. A exclusão de um animal também exclui suas fotos e registros de interesse, conforme as chaves estrangeiras do banco.
@@ -76,7 +89,7 @@ npm run dev
 
 Acesse `http://localhost:5173` com o backend em execução na porta 8080. O servidor de desenvolvimento do Vite encaminha as chamadas `/api` ao Spring Boot. Para hospedar o frontend separadamente em produção, configure o servidor HTTP para encaminhar `/api` ao backend.
 
-O painel mostra gráficos de espécie, disponibilidade e faixas etárias calculados a partir das consultas SQL. As seções **Animais** e **Raças** permitem cadastro, edição e exclusão; **Consultas** apresenta os resultados das quatro consultas, incluindo recomendações pelo ID do usuário.
+O painel mostra gráficos de espécie, disponibilidade e faixas etárias calculados a partir das consultas SQL. As seções **Animais** e **Raças** permitem cadastro, edição e exclusão; **Consultas** apresenta dez relatórios: as quatro consultas originais, as quatro consultas avançadas e as duas visões gerenciais.
 
 Para conferir a compilação e as regras de código, execute `npm run build` e `npm run lint`.
 

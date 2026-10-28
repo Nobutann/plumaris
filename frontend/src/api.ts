@@ -1,12 +1,19 @@
 import type {
+  AdvancedReports,
   AgeGroupSummary,
   Animal,
   AnimalInput,
   Breed,
   BreedInput,
+  BreedAnimalCoverageReport,
+  BreedSupplyDemandReport,
   Center,
+  CenterOperationsReport,
   DashboardData,
+  EmptyCenterReport,
+  OlderAnimalReport,
   SpeciesSummary,
+  UnmetPreferenceReport,
 } from './types'
 
 interface ApiProblem {
@@ -57,6 +64,19 @@ export const api = {
 
   recommendedAnimals(userId: number): Promise<Animal[]> {
     return request<Animal[]>(`/animais/recomendados?userId=${userId}`)
+  },
+
+  async loadAdvancedReports(): Promise<AdvancedReports> {
+    const [emptyCenters, breedAnimalCoverage, unmetPreferences, olderAnimals, centerOperations, breedSupplyDemand] = await Promise.all([
+      request<EmptyCenterReport[]>('/relatorios/centros-sem-animais-disponiveis'),
+      request<BreedAnimalCoverageReport[]>('/relatorios/cobertura-racas-animais'),
+      request<UnmetPreferenceReport[]>('/relatorios/preferencias-nao-atendidas'),
+      request<OlderAnimalReport[]>('/relatorios/animais-acima-media-idade'),
+      request<CenterOperationsReport[]>('/relatorios/painel-centros'),
+      request<BreedSupplyDemandReport[]>('/relatorios/oferta-demanda-racas'),
+    ])
+
+    return { emptyCenters, breedAnimalCoverage, unmetPreferences, olderAnimals, centerOperations, breedSupplyDemand }
   },
 
   createAnimal(input: AnimalInput): Promise<Animal> {
