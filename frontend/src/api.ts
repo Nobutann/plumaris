@@ -1,17 +1,25 @@
 import type {
+  AdoptionCompletionResult,
   AdvancedReports,
   AgeGroupSummary,
   Animal,
+  AnimalAuditLogReport,
+  AnimalCompatibilityReport,
   AnimalInput,
+  AnimalPriorityReport,
   Breed,
   BreedInput,
   BreedAnimalCoverageReport,
   BreedSupplyDemandReport,
   Center,
   CenterOperationsReport,
+  CompleteAdoptionInput,
   DashboardData,
   EmptyCenterReport,
+  InterestInput,
   OlderAnimalReport,
+  RedistributeAnimalsInput,
+  RedistributionResult,
   SpeciesSummary,
   UnmetPreferenceReport,
 } from './types'
@@ -101,5 +109,38 @@ export const api = {
 
   deleteBreed(id: number): Promise<void> {
     return request<void>(`/racas/${id}`, { method: 'DELETE' })
+  },
+
+  animalPriorities(): Promise<AnimalPriorityReport[]> {
+    return request<AnimalPriorityReport[]>('/relatorios/prioridade-adocao')
+  },
+
+  userCompatibility(userId: number): Promise<AnimalCompatibilityReport[]> {
+    return request<AnimalCompatibilityReport[]>(`/relatorios/compatibilidade-usuario?userId=${userId}`)
+  },
+
+  completeAdoption(input: CompleteAdoptionInput): Promise<AdoptionCompletionResult> {
+    return request<AdoptionCompletionResult>('/relatorios/procedimentos/concluir-adocao', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    })
+  },
+
+  redistributeAnimals(input: RedistributeAnimalsInput): Promise<RedistributionResult> {
+    return request<RedistributionResult>('/relatorios/procedimentos/redistribuir-animais', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    })
+  },
+
+  auditLogs(): Promise<AnimalAuditLogReport[]> {
+    return request<AnimalAuditLogReport[]>('/relatorios/logs-auditoria')
+  },
+
+  registerInterest(input: InterestInput): Promise<void> {
+    return request<void>('/relatorios/interesses', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    })
   },
 }

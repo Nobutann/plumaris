@@ -20,7 +20,7 @@ const pageCopy: Record<Page, { title: string; description: string }> = {
   dashboard: { title: 'Visão geral', description: 'Panorama dos animais e centros de adoção cadastrados.' },
   animals: { title: 'Animais', description: 'Consulte, cadastre e mantenha os registros do catálogo.' },
   breeds: { title: 'Raças', description: 'Gerencie as raças disponíveis para cães e gatos.' },
-  reports: { title: 'Consultas', description: 'Explore consultas SQL avançadas e visões gerenciais da aplicação.' },
+  reports: { title: 'Consultas e Rotinas SQL', description: 'Explore consultas SQL, visões, funções, procedimentos armazenados e triggers.' },
 }
 
 function App() {
@@ -129,7 +129,7 @@ function App() {
             {data && page === 'dashboard' && <DashboardPage data={data} onNavigate={navigate} />}
             {data && page === 'animals' && <AnimalsPage animals={data.animals} breeds={data.breeds} centers={data.centers} refresh={refresh} />}
             {data && page === 'breeds' && <BreedsPage breeds={data.breeds} refresh={refresh} />}
-            {data && page === 'reports' && <AdvancedReportsPage data={data} />}
+            {data && page === 'reports' && <AdvancedReportsPage data={data} refresh={refresh} />}
           </div>
 
           <footer className="mx-5 mt-8 border-t border-[#27445a] py-5 text-xs text-[#6f8da1] sm:mx-7">

@@ -139,3 +139,71 @@ export interface AdvancedReports {
   centerOperations: CenterOperationsReport[]
   breedSupplyDemand: BreedSupplyDemandReport[]
 }
+
+export interface AnimalPriorityReport {
+  animalId: number
+  animalName: string
+  species: Species
+  size: Animal['size']
+  birthDate: string | null
+  available: boolean
+  totalInterests: number
+  adoptionPriority: string
+}
+
+export interface AnimalCompatibilityReport {
+  animalId: number
+  animalName: string
+  species: Species
+  size: Animal['size']
+  sex: Animal['sex']
+  color: string | null
+  breedName: string | null
+  compatibilityScore: number
+  adoptionPriority: string
+}
+
+export interface CompleteAdoptionInput {
+  animalId: number
+  userId: number
+}
+
+export interface AdoptionCompletionResult {
+  animalId: number
+  animalName: string
+  species: Species
+  available: boolean
+  centerId: number
+  description: string | null
+}
+
+export interface RedistributeAnimalsInput {
+  sourceCenterId: number
+  maxPerUnit: number
+}
+
+export interface RedistributionResult {
+  sourceCenterId: number
+  mainCenterId: number
+  maxPerUnit: number
+  transferredAnimals: number
+  remainingAtSource: number
+}
+
+export interface AnimalAuditLogReport {
+  logId: number
+  animalId: number
+  animalName: string
+  eventType: string
+  previousAvailability: boolean
+  newAvailability: boolean
+  previousCenterId: number
+  newCenterId: number
+  details: string
+  eventDate: string | null
+}
+
+export interface InterestInput {
+  userId: number
+  animalId: number
+}
