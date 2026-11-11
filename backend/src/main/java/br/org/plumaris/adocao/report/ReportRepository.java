@@ -1,6 +1,8 @@
 package br.org.plumaris.adocao.report;
 
+import java.sql.CallableStatement;
 import java.sql.Connection;
+import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -144,6 +146,70 @@ public class ReportRepository {
             ORDER BY especie, racaNome, idRaca
             """;
 
+    private static final String ANIMAL_PRIORITY_SQL = """
+            SELECT
+                a.idAnimal,
+                a.nome AS animalNome,
+                a.especie,
+                a.porte,
+                a.dataNascimento,
+                a.disponibilidade,
+                COUNT(i.idConta) AS totalInteresses,
+                fn_classificar_prioridade_adocao(a.idAnimal) AS prioridadeAdocao
+            FROM Animal a
+            LEFT JOIN Interesse i ON i.idAnimal = a.idAnimal
+            GROUP BY
+                a.idAnimal,
+                a.nome,
+                a.especie,
+                a.porte,
+                a.dataNascimento,
+                a.disponibilidade
+            ORDER BY a.idAnimal
+            """;
+
+    private static final String USER_COMPATIBILITY_SQL = """
+            SELECT
+                a.idAnimal,
+                a.nome AS animalNome,
+                a.especie,
+                a.porte,
+                a.sexo,
+                a.cor,
+                r.nome AS racaNome,
+                fn_pontuacao_compatibilidade(?, a.idAnimal) AS pontuacaoCompatibilidade,
+                fn_classificar_prioridade_adocao(a.idAnimal) AS prioridadeAdocao
+            FROM Animal a
+            LEFT JOIN Raca r ON r.idRaca = a.idRaca
+            WHERE a.disponibilidade = 1
+            ORDER BY pontuacaoCompatibilidade DESC, a.idAnimal ASC
+            """;
+
+    private static final String CALL_COMPLETE_ADOPTION_SQL = "{CALL sp_concluir_adocao_animal(?, ?)}";
+
+    private static final String CALL_REDISTRIBUTE_ANIMALS_SQL = "{CALL sp_redistribuir_animais_rede(?, ?)}";
+
+    private static final String AUDIT_LOGS_SQL = """
+            SELECT
+                idLog,
+                idAnimal,
+                nomeAnimal,
+                tipoEvento,
+                disponibilidadeAnterior,
+                disponibilidadeNova,
+                idCentroAnterior,
+                idCentroNovo,
+                detalhes,
+                dataEvento
+            FROM Log_Auditoria_Animal
+            ORDER BY idLog DESC
+            """;
+
+    private static final String INSERT_INTEREST_SQL = """
+            INSERT INTO Interesse (idConta, idAnimal)
+            VALUES (?, ?)
+            """;
+
     private final DatabaseConnectionFactory connectionFactory;
 
     public ReportRepository(DatabaseConnectionFactory connectionFactory) {
@@ -225,6 +291,117 @@ public class ReportRepository {
                 results.getLong("totalInteresses"),
                 results.getLong("saldoOferta"),
                 results.getString("situacaoOferta")));
+    }
+
+    public List<AnimalPriorityResponse> findAnimalPriorities() {
+        return query(ANIMAL_PRIORITY_SQL, results -> {
+            Date birthDate = results.getDate("dataNascimento");
+            return new AnimalPriorityResponse(
+                    results.getInt("idAnimal"),
+                    results.getString("animalNome"),
+                    results.getString("especie"),
+                    results.getString("porte"),
+                    birthDate == null ? null : birthDate.toLocalDate(),
+                    results.getBoolean("disponibilidade"),
+                    results.getLong("totalInteresses"),
+                    results.getString("prioridadeAdocao"));
+        });
+    }
+
+    public List<AnimalCompatibilityResponse> findCompatibilityForUser(int userId) {
+        List<AnimalCompatibilityResponse> rows = new ArrayList<>();
+        try (Connection connection = connectionFactory.openConnection();
+                PreparedStatement statement = connection.prepareStatement(USER_COMPATIBILITY_SQL)) {
+            statement.setInt(1, userId);
+            try (ResultSet results = statement.executeQuery()) {
+                while (results.next()) {
+                    rows.add(new AnimalCompatibilityResponse(
+                            results.getInt("idAnimal"),
+                            results.getString("animalNome"),
+                            results.getString("especie"),
+                            results.getString("porte"),
+                            results.getString("sexo"),
+                            results.getString("cor"),
+                            results.getString("racaNome"),
+                            results.getInt("pontuacaoCompatibilidade"),
+                            results.getString("prioridadeAdocao")));
+                }
+            }
+            return rows;
+        } catch (SQLException exception) {
+            throw DatabaseException.from(exception);
+        }
+    }
+
+    public AdoptionCompletionResponse completeAdoption(int animalId, int userId) {
+        try (Connection connection = connectionFactory.openConnection();
+                CallableStatement statement = connection.prepareCall(CALL_COMPLETE_ADOPTION_SQL)) {
+            statement.setInt(1, animalId);
+            statement.setInt(2, userId);
+            try (ResultSet results = statement.executeQuery()) {
+                if (!results.next()) {
+                    throw new IllegalStateException("Procedure sp_concluir_adocao_animal returned no result");
+                }
+                return new AdoptionCompletionResponse(
+                        results.getInt("idAnimal"),
+                        results.getString("animalNome"),
+                        results.getString("especie"),
+                        results.getBoolean("disponibilidade"),
+                        results.getInt("idCentro"),
+                        results.getString("descricao"));
+            }
+        } catch (SQLException exception) {
+            throw DatabaseException.from(exception);
+        }
+    }
+
+    public RedistributionResultResponse redistributeAnimals(int sourceCenterId, int maxPerUnit) {
+        try (Connection connection = connectionFactory.openConnection();
+                CallableStatement statement = connection.prepareCall(CALL_REDISTRIBUTE_ANIMALS_SQL)) {
+            statement.setInt(1, sourceCenterId);
+            statement.setInt(2, maxPerUnit);
+            try (ResultSet results = statement.executeQuery()) {
+                if (!results.next()) {
+                    throw new IllegalStateException("Procedure sp_redistribuir_animais_rede returned no result");
+                }
+                return new RedistributionResultResponse(
+                        results.getInt("idCentroOrigem"),
+                        results.getInt("idCentroMatriz"),
+                        results.getInt("limitePorUnidade"),
+                        results.getInt("animaisTransferidos"),
+                        results.getInt("animaisRestantesOrigem"));
+            }
+        } catch (SQLException exception) {
+            throw DatabaseException.from(exception);
+        }
+    }
+
+    public List<AnimalAuditLogResponse> findAuditLogs() {
+        return query(AUDIT_LOGS_SQL, results -> {
+            Timestamp eventDate = results.getTimestamp("dataEvento");
+            return new AnimalAuditLogResponse(
+                    results.getInt("idLog"),
+                    results.getInt("idAnimal"),
+                    results.getString("nomeAnimal"),
+                    results.getString("tipoEvento"),
+                    results.getBoolean("disponibilidadeAnterior"),
+                    results.getBoolean("disponibilidadeNova"),
+                    results.getInt("idCentroAnterior"),
+                    results.getInt("idCentroNovo"),
+                    results.getString("detalhes"),
+                    eventDate == null ? null : eventDate.toLocalDateTime());
+        });
+    }
+
+    public void registerInterest(int userId, int animalId) {
+        try (Connection connection = connectionFactory.openConnection();
+                PreparedStatement statement = connection.prepareStatement(INSERT_INTEREST_SQL)) {
+            statement.setInt(1, userId);
+            statement.setInt(2, animalId);
+            statement.executeUpdate();
+        } catch (SQLException exception) {
+            throw DatabaseException.from(exception);
+        }
     }
 
     private <T> List<T> query(String sql, RowMapper<T> mapper) {
