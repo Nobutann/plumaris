@@ -2,7 +2,7 @@
 
 Aplicação para consultar cães, gatos e os centros de adoção responsáveis por eles. O backend oferece uma API REST em Java; o frontend é uma aplicação independente em React e TypeScript.
 
-> **Estado:** primeira versão beta (`v0.1.0-beta.1`). O backend possui as quatro consultas originais, quatro consultas avançadas, duas visões gerenciais e operações de cadastro, alteração e exclusão de animais e raças. O frontend oferece painel com gráficos, manutenção de animais e raças e visualização de todos esses relatórios.
+> **Estado:** primeira versão beta (`v0.1.0-beta.1`). O backend possui as quatro consultas originais, quatro consultas avançadas, duas visões gerenciais, duas funções SQL, dois procedimentos armazenados, dois triggers com tabela de auditoria e operações de cadastro, alteração e exclusão de animais e raças. O frontend oferece painel com gráficos, manutenção de animais e raças e visualização ou execução de todos esses recursos.
 
 ## Estrutura
 
@@ -37,8 +37,11 @@ Com `adocao_bd` selecionado, execute os scripts nesta ordem:
 2. `database/02_insercao_dados.sql`
 3. `database/04_indices.sql`
 4. `database/05_visoes.sql`
+5. `database/07_funcoes.sql`
+6. `database/08_procedimentos.sql`
+7. `database/09_triggers.sql`
 
-Como alternativa aos dois primeiros passos, execute somente `database/01_criacao_e_insercao.sql`, que reúne a versão atual dos scripts de criação e inserção em um único arquivo. O arquivo `database/06_consultas_avancadas.sql` pode ser executado depois para conferir diretamente as quatro consultas da Etapa 04 e o conteúdo das duas visões.
+Como alternativa aos dois primeiros passos, execute somente `database/01_criacao_e_insercao.sql`, que reúne a versão atual dos scripts de criação e inserção em um único arquivo. O arquivo `database/06_consultas_avancadas.sql` pode ser executado depois para conferir diretamente as quatro consultas da Etapa 04 e o conteúdo das duas visões. Os scripts `07_funcoes.sql`, `08_procedimentos.sql` e `09_triggers.sql` criam as rotinas e os gatilhos do banco e incluem consultas de demonstração ao final de cada arquivo.
 
 Os scripts de carga foram preparados para um banco vazio. A carga inicial contém 30 animais; confira com `SELECT COUNT(*) FROM Animal;`.
 
@@ -63,7 +66,7 @@ O servidor inicia na porta 8080. As rotas de consulta de animais são:
 
 Os campos das respostas JSON usam nomes em inglês. O SQL está explícito no repositório JDBC; as quatro consultas estão reunidas em `database/03_consultas.sql`. Para executar a quarta no Workbench com outro usuário, altere o valor de `@user_id` no arquivo.
 
-Os relatórios da Etapa 04 estão disponíveis nestas rotas:
+Os relatórios da Etapa 04 e as rotinas de banco (funções, procedimentos e triggers) estão disponíveis nestas rotas:
 
 - `GET /api/relatorios/centros-sem-animais-disponiveis`: anti join de centros sem oferta ativa.
 - `GET /api/relatorios/cobertura-racas-animais`: full outer join emulado entre raças e animais.
@@ -71,6 +74,12 @@ Os relatórios da Etapa 04 estão disponíveis nestas rotas:
 - `GET /api/relatorios/animais-acima-media-idade`: subconsulta correlacionada por espécie.
 - `GET /api/relatorios/painel-centros`: dados da visão operacional dos centros.
 - `GET /api/relatorios/oferta-demanda-racas`: dados da visão de oferta e demanda por raça.
+- `GET /api/relatorios/prioridade-adocao`: classificação de prioridade de adoção calculada pela função `fn_classificar_prioridade_adocao`.
+- `GET /api/relatorios/compatibilidade-usuario?userId=1`: pontuação de compatibilidade (0 a 100) calculada pela função `fn_pontuacao_compatibilidade`.
+- `POST /api/relatorios/procedimentos/concluir-adocao`: executa o procedimento `sp_concluir_adocao_animal` para registrar a adoção e atualizar os dados do animal.
+- `POST /api/relatorios/procedimentos/redistribuir-animais`: executa o procedimento `sp_redistribuir_animais_rede` (com uso de `CURSOR`) para redistribuir animais disponíveis entre unidades da mesma rede respeitando o limite por unidade.
+- `GET /api/relatorios/logs-auditoria`: lista o histórico gravado na tabela `Log_Auditoria_Animal` pelo trigger `trg_animal_after_update_log`.
+- `POST /api/relatorios/interesses`: registra interesse de um usuário em um animal, validado pelo trigger `trg_interesse_before_insert_validar`.
 
 `GET /api/centros` lista os centros de adoção disponíveis para o cadastro de animais.
 
@@ -89,7 +98,7 @@ npm run dev
 
 Acesse `http://localhost:5173` com o backend em execução na porta 8080. O servidor de desenvolvimento do Vite encaminha as chamadas `/api` ao Spring Boot. Para hospedar o frontend separadamente em produção, configure o servidor HTTP para encaminhar `/api` ao backend.
 
-O painel mostra gráficos de espécie, disponibilidade e faixas etárias calculados a partir das consultas SQL. As seções **Animais** e **Raças** permitem cadastro, edição e exclusão; **Consultas** apresenta dez relatórios: as quatro consultas originais, as quatro consultas avançadas e as duas visões gerenciais.
+O painel mostra gráficos de espécie, disponibilidade e faixas etárias calculados a partir das consultas SQL. As seções **Animais** e **Raças** permitem cadastro, edição e exclusão; **Consultas** apresenta quinze painéis: as quatro consultas originais, as quatro consultas avançadas, as duas visões gerenciais, as duas funções SQL, os dois procedimentos armazenados e a gestão de interesses e histórico de auditoria dos triggers.
 
 Para conferir a compilação e as regras de código, execute `npm run build` e `npm run lint`.
 
