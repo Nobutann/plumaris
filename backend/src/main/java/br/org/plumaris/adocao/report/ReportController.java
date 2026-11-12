@@ -85,7 +85,7 @@ public class ReportController {
     }
 
     @PostMapping("/interesses")
-    @ResponseStatus(HttpStatus.CREATED)
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     public void registerInterest(@Valid @RequestBody InterestRequest request) {
         reportRepository.registerInterest(request.userId(), request.animalId());
     }
