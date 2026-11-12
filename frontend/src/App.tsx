@@ -20,7 +20,7 @@ const pageCopy: Record<Page, { title: string; description: string }> = {
   dashboard: { title: 'Visão geral', description: 'Panorama dos animais e centros de adoção cadastrados.' },
   animals: { title: 'Animais', description: 'Consulte, cadastre e mantenha os registros do catálogo.' },
   breeds: { title: 'Raças', description: 'Gerencie as raças disponíveis para cães e gatos.' },
-  reports: { title: 'Consultas e Rotinas SQL', description: 'Explore consultas SQL, visões, funções, procedimentos armazenados e triggers.' },
+  reports: { title: 'Consultas', description: 'Explore consultas SQL avançadas, visões, funções, procedimentos e auditoria.' },
 }
 
 function App() {

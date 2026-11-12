@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { api } from '../api'
-import { ageGroupLabel, sexLabel, sizeLabel, speciesLabel } from '../format'
+import { ageGroupLabel, dateLabel, sexLabel, sizeLabel, speciesLabel } from '../format'
 import type {
   AdoptionCompletionResult,
   AdvancedReports,
@@ -37,11 +37,11 @@ const reports = [
   { id: 8, title: 'Acima da média etária', detail: 'Subconsulta correlacionada' },
   { id: 9, title: 'Operação dos centros', detail: 'Visão com quatro joins' },
   { id: 10, title: 'Oferta × demanda', detail: 'Visão com três joins' },
-  { id: 11, title: 'Prioridade de adoção', detail: 'Função condicional (IF/ELSE)' },
-  { id: 12, title: 'Índice compatibilidade', detail: 'Função de pontuação (0–100)' },
-  { id: 13, title: 'Concluir adoção', detail: 'Procedimento de UPDATE' },
-  { id: 14, title: 'Redistribuir na rede', detail: 'Procedimento com CURSOR' },
-  { id: 15, title: 'Auditoria e Triggers', detail: 'Logs e validação de interesse' },
+  { id: 11, title: 'Prioridade de adoção', detail: 'Classificação por urgência' },
+  { id: 12, title: 'Compatibilidade', detail: 'Pontuação por preferência' },
+  { id: 13, title: 'Conclusão de adoção', detail: 'Baixa operacional de animal' },
+  { id: 14, title: 'Redistribuição na rede', detail: 'Balanceamento entre unidades' },
+  { id: 15, title: 'Auditoria e interesses', detail: 'Histórico de eventos e interesses' },
 ] as const
 
 type ReportId = typeof reports[number]['id']
@@ -63,7 +63,6 @@ export function AdvancedReportsPage({
   const [advancedStatus, setAdvancedStatus] = useState<LoadStatus>('loading')
   const [advancedError, setAdvancedError] = useState('')
 
-  // Etapa 05: Funções, Procedimentos e Triggers
   const [priorities, setPriorities] = useState<AnimalPriorityReport[]>([])
   const [priorityStatus, setPriorityStatus] = useState<LoadStatus>('loading')
   const [priorityError, setPriorityError] = useState('')
@@ -90,12 +89,12 @@ export function AdvancedReportsPage({
   const [auditError, setAuditError] = useState('')
 
   const [interestUserId, setInterestUserId] = useState('1')
-  const [interestAnimalId, setInterestAnimalId] = useState('7')
+  const [interestAnimalId, setInterestAnimalId] = useState('1')
   const [interestSubmitting, setInterestSubmitting] = useState(false)
   const [interestError, setInterestError] = useState('')
   const [interestSuccess, setInterestSuccess] = useState('')
 
-  const loadRoutinesAndTriggersData = useCallback(async (targetUserId: number) => {
+  const reloadRoutinesAndTriggersData = useCallback(async (targetUserId: number) => {
     setPriorityStatus('loading')
     setPriorityError('')
     api.animalPriorities()
@@ -104,7 +103,7 @@ export function AdvancedReportsPage({
         setPriorityStatus('ready')
       })
       .catch((cause: unknown) => {
-        setPriorityError(cause instanceof Error ? cause.message : 'Não foi possível consultar a função de prioridade.')
+        setPriorityError(cause instanceof Error ? cause.message : 'Não foi possível carregar a classificação de prioridade.')
         setPriorityStatus('error')
       })
 
@@ -116,7 +115,7 @@ export function AdvancedReportsPage({
         setCompatStatus('ready')
       })
       .catch((cause: unknown) => {
-        setCompatError(cause instanceof Error ? cause.message : 'Não foi possível consultar a função de compatibilidade.')
+        setCompatError(cause instanceof Error ? cause.message : 'Não foi possível carregar o índice de compatibilidade.')
         setCompatStatus('error')
       })
 
@@ -128,7 +127,7 @@ export function AdvancedReportsPage({
         setAuditStatus('ready')
       })
       .catch((cause: unknown) => {
-        setAuditError(cause instanceof Error ? cause.message : 'Não foi possível carregar os logs de auditoria.')
+        setAuditError(cause instanceof Error ? cause.message : 'Não foi possível carregar o histórico de auditoria.')
         setAuditStatus('error')
       })
   }, [])
@@ -164,10 +163,50 @@ export function AdvancedReportsPage({
         }
       })
 
-    void loadRoutinesAndTriggersData(1)
+    api.animalPriorities()
+      .then((rows) => {
+        if (active) {
+          setPriorities(rows)
+          setPriorityStatus('ready')
+        }
+      })
+      .catch((cause: unknown) => {
+        if (active) {
+          setPriorityError(cause instanceof Error ? cause.message : 'Não foi possível carregar a classificação de prioridade.')
+          setPriorityStatus('error')
+        }
+      })
+
+    api.userCompatibility(1)
+      .then((rows) => {
+        if (active) {
+          setCompatibilities(rows)
+          setCompatStatus('ready')
+        }
+      })
+      .catch((cause: unknown) => {
+        if (active) {
+          setCompatError(cause instanceof Error ? cause.message : 'Não foi possível carregar o índice de compatibilidade.')
+          setCompatStatus('error')
+        }
+      })
+
+    api.auditLogs()
+      .then((rows) => {
+        if (active) {
+          setAuditLogs(rows)
+          setAuditStatus('ready')
+        }
+      })
+      .catch((cause: unknown) => {
+        if (active) {
+          setAuditError(cause instanceof Error ? cause.message : 'Não foi possível carregar o histórico de auditoria.')
+          setAuditStatus('error')
+        }
+      })
 
     return () => { active = false }
-  }, [loadRoutinesAndTriggersData])
+  }, [])
 
   async function searchRecommendations(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -215,7 +254,7 @@ export function AdvancedReportsPage({
       await refresh()
       const nextReports = await api.loadAdvancedReports()
       setAdvanced(nextReports)
-      await loadRoutinesAndTriggersData(Number(compatUserId) || 1)
+      await reloadRoutinesAndTriggersData(Number(compatUserId) || 1)
     } catch (cause) {
       setAdoptError(cause instanceof Error ? cause.message : 'Não foi possível concluir a adoção.')
     } finally {
@@ -237,7 +276,7 @@ export function AdvancedReportsPage({
       await refresh()
       const nextReports = await api.loadAdvancedReports()
       setAdvanced(nextReports)
-      await loadRoutinesAndTriggersData(Number(compatUserId) || 1)
+      await reloadRoutinesAndTriggersData(Number(compatUserId) || 1)
     } catch (cause) {
       setRedistributeError(cause instanceof Error ? cause.message : 'Não foi possível redistribuir os animais.')
     } finally {
@@ -255,8 +294,8 @@ export function AdvancedReportsPage({
         userId: Number(interestUserId),
         animalId: Number(interestAnimalId),
       })
-      setInterestSuccess(`Interesse do usuário #${interestUserId} no animal #${interestAnimalId} registrado com sucesso!`)
-      await loadRoutinesAndTriggersData(Number(compatUserId) || 1)
+      setInterestSuccess(`Interesse registrado para o usuário #${interestUserId} no animal #${interestAnimalId}.`)
+      await reloadRoutinesAndTriggersData(Number(compatUserId) || 1)
     } catch (cause) {
       setInterestError(cause instanceof Error ? cause.message : 'Não foi possível registrar o interesse.')
     } finally {
@@ -266,7 +305,7 @@ export function AdvancedReportsPage({
 
   return (
     <div className="space-y-5">
-      <Panel title="Consultas, Visões, Funções, Procedimentos e Triggers" detail="Selecione um item para inspecionar os resultados ou executar rotinas armazenadas no MySQL">
+      <Panel title="Consultas SQL" detail="Consultas, visões gerenciais, funções, procedimentos armazenados e auditoria">
         <div className="grid gap-px bg-[#2b4961] sm:grid-cols-2 xl:grid-cols-5">
           {reports.map((report) => (
             <button
@@ -417,70 +456,76 @@ export function AdvancedReportsPage({
 
       {activeReport === 11 && (
         <Panel
-          title="11 · Função 1: fn_classificar_prioridade_adocao"
-          detail="Classifica a prioridade de divulgação de cada animal usando IF / ELSEIF / ELSE sobre disponibilidade, idade, porte e total de interesses"
+          title="11 · Prioridade de adoção"
+          detail="Classificação calculada pela função fn_classificar_prioridade_adocao conforme disponibilidade, idade, porte e procura"
         >
-          {priorityStatus === 'loading' && <EmptyState>Consultando função fn_classificar_prioridade_adocao...</EmptyState>}
+          {priorityStatus === 'loading' && <EmptyState>Carregando classificação de prioridade...</EmptyState>}
           {priorityStatus === 'error' && <div className="p-4"><ErrorMessage message={`${priorityError} Confirme se o script 07_funcoes.sql foi executado.`} /></div>}
           {priorityStatus === 'ready' && (
-            <ReportTable headers={['ID', 'Animal', 'Espécie', 'Porte', 'Nascimento', 'Situação', 'Interesses', 'Prioridade (Função SQL)']}>
-              {priorities.map((row) => (
-                <tr key={row.animalId} className={tableRowClass}>
-                  <Cell mono>#{row.animalId}</Cell>
-                  <Cell highlight>{row.animalName}</Cell>
-                  <Cell>{speciesLabel(row.species)}</Cell>
-                  <Cell>{row.size ? sizeLabel(row.size) : '—'}</Cell>
-                  <Cell mono>{row.birthDate || '—'}</Cell>
-                  <Cell><Availability available={row.available} /></Cell>
-                  <Cell mono>{row.totalInterests}</Cell>
-                  <Cell highlight>{row.adoptionPriority}</Cell>
-                </tr>
-              ))}
-            </ReportTable>
+            priorities.length === 0 ? <EmptyState>Nenhum animal cadastrado.</EmptyState> : (
+              <ReportTable headers={['ID', 'Animal', 'Espécie', 'Porte', 'Nascimento', 'Situação', 'Interesses', 'Prioridade']}>
+                {priorities.map((row) => (
+                  <tr key={row.animalId} className={tableRowClass}>
+                    <Cell mono>#{row.animalId}</Cell>
+                    <Cell highlight>{row.animalName}</Cell>
+                    <Cell>{speciesLabel(row.species)}</Cell>
+                    <Cell>{row.size ? sizeLabel(row.size) : '—'}</Cell>
+                    <Cell>{dateLabel(row.birthDate)}</Cell>
+                    <Cell><Availability available={row.available} /></Cell>
+                    <Cell mono>{row.totalInterests}</Cell>
+                    <Cell highlight>{row.adoptionPriority}</Cell>
+                  </tr>
+                ))}
+              </ReportTable>
+            )
           )}
         </Panel>
       )}
 
       {activeReport === 12 && (
         <Panel
-          title="12 · Função 2: fn_pontuacao_compatibilidade"
-          detail="Calcula um índice de compatibilidade (0 a 100 pontos) entre a preferência do usuário e cada animal disponível"
+          title="12 · Índice de compatibilidade por usuário"
+          detail="Pontuação de 0 a 100 calculada pela função fn_pontuacao_compatibilidade conforme as preferências cadastradas"
         >
           <form onSubmit={(event) => void searchCompatibility(event)} className="flex flex-wrap items-end gap-3 border-b border-[#29465b] p-4">
-            <label className="block w-48 text-xs font-medium text-[#a9c2d2]">ID do usuário (1 a 30)
+            <label className="block w-48 text-xs font-medium text-[#a9c2d2]">ID do usuário
               <input className={`${fieldClass} mt-1.5`} type="number" min="1" step="1" required value={compatUserId} onChange={(event) => setCompatUserId(event.target.value)} />
             </label>
-            <button type="submit" disabled={compatStatus === 'loading'} className={primaryButtonClass}>Calcular pontuação</button>
+            <button type="submit" disabled={compatStatus === 'loading'} className={primaryButtonClass}>Calcular compatibilidade</button>
           </form>
-          {compatStatus === 'loading' && <EmptyState>Calculando compatibilidade no MySQL...</EmptyState>}
-          {compatStatus === 'error' && <div className="p-4"><ErrorMessage message={`${compatError} Confirme se o script 07_funcoes.sql foi executado.`} /></div>}
-          {compatStatus === 'ready' && (
-            <ReportTable headers={['ID', 'Animal', 'Espécie', 'Raça', 'Porte', 'Sexo', 'Cor', 'Pontuação', 'Prioridade']}>
-              {compatibilities.map((row) => (
-                <tr key={row.animalId} className={tableRowClass}>
-                  <Cell mono>#{row.animalId}</Cell>
-                  <Cell highlight>{row.animalName}</Cell>
-                  <Cell>{speciesLabel(row.species)}</Cell>
-                  <Cell>{row.breedName || '—'}</Cell>
-                  <Cell>{row.size ? sizeLabel(row.size) : '—'}</Cell>
-                  <Cell>{row.sex ? sexLabel(row.sex) : '—'}</Cell>
-                  <Cell>{row.color || '—'}</Cell>
-                  <Cell mono highlight>{row.compatibilityScore} pts</Cell>
-                  <Cell>{row.adoptionPriority}</Cell>
-                </tr>
-              ))}
-            </ReportTable>
-          )}
+          <div aria-live="polite">
+            {compatStatus === 'loading' && <EmptyState>Calculando compatibilidade...</EmptyState>}
+            {compatStatus === 'error' && <div className="p-4"><ErrorMessage message={`${compatError} Confirme se o script 07_funcoes.sql foi executado.`} /></div>}
+            {compatStatus === 'ready' && (
+              compatibilities.length === 0 ? <EmptyState>Nenhum animal disponível para avaliação.</EmptyState> : (
+                <ReportTable headers={['ID', 'Animal', 'Espécie', 'Raça', 'Porte', 'Sexo', 'Cor', 'Pontuação', 'Prioridade']}>
+                  {compatibilities.map((row) => (
+                    <tr key={row.animalId} className={tableRowClass}>
+                      <Cell mono>#{row.animalId}</Cell>
+                      <Cell highlight>{row.animalName}</Cell>
+                      <Cell>{speciesLabel(row.species)}</Cell>
+                      <Cell>{row.breedName || '—'}</Cell>
+                      <Cell>{row.size ? sizeLabel(row.size) : '—'}</Cell>
+                      <Cell>{row.sex ? sexLabel(row.sex) : '—'}</Cell>
+                      <Cell>{row.color || '—'}</Cell>
+                      <Cell mono highlight>{row.compatibilityScore} pts</Cell>
+                      <Cell>{row.adoptionPriority}</Cell>
+                    </tr>
+                  ))}
+                </ReportTable>
+              )
+            )}
+          </div>
         </Panel>
       )}
 
       {activeReport === 13 && (
         <Panel
-          title="13 · Procedimento 1: sp_concluir_adocao_animal (Atualização)"
-          detail="Registra o interesse do adotante, marca o animal como indisponível (adotado) e anota a adoção na descrição"
+          title="13 · Conclusão de adoção"
+          detail="Procedimento sp_concluir_adocao_animal para vincular o adotante e atualizar a disponibilidade do animal"
         >
           <form onSubmit={(event) => void handleCompleteAdoption(event)} className="flex flex-wrap items-end gap-3 border-b border-[#29465b] p-4">
-            <label className="block w-64 text-xs font-medium text-[#a9c2d2]">Animal disponível
+            <label className="block w-64 text-xs font-medium text-[#a9c2d2]">Animal
               <select className={`${fieldClass} mt-1.5`} value={adoptAnimalId} onChange={(event) => setAdoptAnimalId(event.target.value)}>
                 {data.animals.map((animal) => (
                   <option key={animal.id} value={animal.id}>
@@ -493,29 +538,34 @@ export function AdvancedReportsPage({
               <input className={`${fieldClass} mt-1.5`} type="number" min="1" step="1" required value={adoptUserId} onChange={(event) => setAdoptUserId(event.target.value)} />
             </label>
             <button type="submit" disabled={adoptSubmitting} className={primaryButtonClass}>
-              {adoptSubmitting ? 'Executando...' : 'Executar CALL sp_concluir_adocao_animal'}
+              {adoptSubmitting ? 'Processando...' : 'Concluir adoção'}
             </button>
           </form>
-          <div className="space-y-4 p-4">
-            {adoptError && <ErrorMessage message={adoptError} />}
-            {adoptResult && (
-              <div className="border border-[#386b52] bg-[#162f28] p-4 text-sm text-[#c8f0db]">
-                <p className="font-semibold">Adoção concluída com sucesso pelo procedimento!</p>
-                <p className="mt-1">Animal: <strong>#{adoptResult.animalId} · {adoptResult.animalName}</strong> (Centro #{adoptResult.centerId})</p>
-                <p className="mt-1">Descrição atualizada: <span className="font-mono text-xs">{adoptResult.description}</span></p>
-              </div>
+          <div aria-live="polite">
+            {adoptError && <div className="p-4"><ErrorMessage message={adoptError} /></div>}
+            {!adoptError && !adoptResult && (
+              <EmptyState>Selecione um animal disponível e informe o ID do adotante para registrar a adoção.</EmptyState>
             )}
-            <p className="text-xs text-[#8faabc]">
-              Dica: ao concluir a adoção, o trigger <code className="text-[#b7dbf0]">trg_animal_after_update_log</code> grava automaticamente um evento <code className="text-[#b7dbf0]">ADOCAO_INDISPONIVEL</code> na aba <strong>15 · Auditoria e Triggers</strong>.
-            </p>
+            {adoptResult && (
+              <ReportTable headers={['ID', 'Animal', 'Espécie', 'Centro', 'Situação', 'Descrição atualizada']}>
+                <tr className={tableRowClass}>
+                  <Cell mono>#{adoptResult.animalId}</Cell>
+                  <Cell highlight>{adoptResult.animalName}</Cell>
+                  <Cell>{speciesLabel(adoptResult.species)}</Cell>
+                  <Cell mono>#{adoptResult.centerId}</Cell>
+                  <Cell><Availability available={adoptResult.available} /></Cell>
+                  <Cell>{adoptResult.description || '—'}</Cell>
+                </tr>
+              </ReportTable>
+            )}
           </div>
         </Panel>
       )}
 
       {activeReport === 14 && (
         <Panel
-          title="14 · Procedimento 2: sp_redistribuir_animais_rede (CURSOR)"
-          detail="Itera com CURSOR sobre os animais disponíveis do centro de origem e transfere cada um para a unidade vinculada com menor ocupação atual abaixo do limite"
+          title="14 · Redistribuição de animais na rede"
+          detail="Procedimento sp_redistribuir_animais_rede com cursor para alocar animais nas unidades vinculadas de menor ocupação"
         >
           <form onSubmit={(event) => void handleRedistribute(event)} className="flex flex-wrap items-end gap-3 border-b border-[#29465b] p-4">
             <label className="block w-72 text-xs font-medium text-[#a9c2d2]">Centro de origem
@@ -527,29 +577,29 @@ export function AdvancedReportsPage({
                 ))}
               </select>
             </label>
-            <label className="block w-52 text-xs font-medium text-[#a9c2d2]">Limite máximo por unidade
+            <label className="block w-52 text-xs font-medium text-[#a9c2d2]">Limite por unidade
               <input className={`${fieldClass} mt-1.5`} type="number" min="1" step="1" required value={maxPerUnit} onChange={(event) => setMaxPerUnit(event.target.value)} />
             </label>
             <button type="submit" disabled={redistributeSubmitting} className={primaryButtonClass}>
-              {redistributeSubmitting ? 'Executando...' : 'Executar CALL sp_redistribuir_animais_rede'}
+              {redistributeSubmitting ? 'Redistribuindo...' : 'Redistribuir animais'}
             </button>
           </form>
-          <div className="space-y-4 p-4">
-            {redistributeError && <ErrorMessage message={redistributeError} />}
-            {redistributeResult && (
-              <div className="border border-[#386b52] bg-[#162f28] p-4 text-sm text-[#c8f0db]">
-                <p className="font-semibold">Redistribuição com CURSOR concluída!</p>
-                <p className="mt-1">
-                  Centro origem: <strong>#{redistributeResult.sourceCenterId}</strong> (Matriz #{redistributeResult.mainCenterId}) ·
-                  Limite por unidade: <strong>{redistributeResult.maxPerUnit}</strong> ·
-                  Animais transferidos: <strong>{redistributeResult.transferredAnimals}</strong> ·
-                  Restantes na origem: <strong>{redistributeResult.remainingAtSource}</strong>
-                </p>
-              </div>
+          <div aria-live="polite">
+            {redistributeError && <div className="p-4"><ErrorMessage message={redistributeError} /></div>}
+            {!redistributeError && !redistributeResult && (
+              <EmptyState>Selecione o centro de origem e o limite de ocupação por unidade para iniciar a redistribuição.</EmptyState>
             )}
-            <p className="text-xs text-[#8faabc]">
-              Cada transferência realizada pelo cursor dispara o trigger <code className="text-[#b7dbf0]">trg_animal_after_update_log</code> na aba <strong>15 · Auditoria e Triggers</strong>.
-            </p>
+            {redistributeResult && (
+              <ReportTable headers={['Centro de origem', 'Matriz da rede', 'Limite por unidade', 'Animais transferidos', 'Restantes na origem']}>
+                <tr className={tableRowClass}>
+                  <Cell mono>#{redistributeResult.sourceCenterId}</Cell>
+                  <Cell mono>#{redistributeResult.mainCenterId}</Cell>
+                  <Cell mono>{redistributeResult.maxPerUnit}</Cell>
+                  <Cell mono highlight>{redistributeResult.transferredAnimals}</Cell>
+                  <Cell mono>{redistributeResult.remainingAtSource}</Cell>
+                </tr>
+              </ReportTable>
+            )}
           </div>
         </Panel>
       )}
@@ -557,11 +607,11 @@ export function AdvancedReportsPage({
       {activeReport === 15 && (
         <div className="space-y-5">
           <Panel
-            title="15A · Teste do Trigger 2: trg_interesse_before_insert_validar"
-            detail="Valida antes do INSERT na tabela Interesse se o animal está disponível para adoção (bloqueia se disponibilidade = 0)"
+            title="15 · Registro de interesse"
+            detail="Manifestação de interesse validada pelo trigger trg_interesse_before_insert_validar"
           >
             <form onSubmit={(event) => void handleRegisterInterest(event)} className="flex flex-wrap items-end gap-3 border-b border-[#29465b] p-4">
-              <label className="block w-48 text-xs font-medium text-[#a9c2d2]">ID do usuário (1 a 30)
+              <label className="block w-48 text-xs font-medium text-[#a9c2d2]">ID do usuário
                 <input className={`${fieldClass} mt-1.5`} type="number" min="1" step="1" required value={interestUserId} onChange={(event) => setInterestUserId(event.target.value)} />
               </label>
               <label className="block w-72 text-xs font-medium text-[#a9c2d2]">Animal
@@ -577,45 +627,44 @@ export function AdvancedReportsPage({
                 {interestSubmitting ? 'Registrando...' : 'Registrar interesse'}
               </button>
             </form>
-            <div className="space-y-2 p-4">
-              {interestError && <ErrorMessage message={interestError} />}
-              {interestSuccess && (
-                <div className="border border-[#386b52] bg-[#162f28] px-4 py-3 text-sm text-[#c8f0db]">
-                  {interestSuccess}
-                </div>
-              )}
-              <p className="text-xs text-[#8faabc]">
-                Experimente selecionar o animal <strong>#7 · Rex (Indisponível)</strong> para ver o bloqueio semântico do trigger <code className="text-[#b7dbf0]">trg_interesse_before_insert_validar</code>, ou um animal disponível (como <strong>#3 · Bob</strong> para o usuário <strong>#1</strong>) para registrar um novo interesse válido.
-              </p>
-            </div>
+            {(interestError || interestSuccess) && (
+              <div className="p-4" aria-live="polite">
+                {interestError && <ErrorMessage message={interestError} />}
+                {interestSuccess && (
+                  <div className="border border-[#386b52] bg-[#162f28] px-4 py-3 text-sm text-[#c8f0db]">
+                    {interestSuccess}
+                  </div>
+                )}
+              </div>
+            )}
           </Panel>
 
           <Panel
-            title="15B · Tabela Log_Auditoria_Animal (Trigger 1: trg_animal_after_update_log)"
-            detail="Histórico gravado automaticamente pelo trigger AFTER UPDATE ON Animal"
+            title="Histórico de auditoria de animais"
+            detail="Eventos registrados automaticamente em Log_Auditoria_Animal pelo trigger trg_animal_after_update_log"
             action={
               <button
                 type="button"
-                onClick={() => void loadRoutinesAndTriggersData(Number(compatUserId) || 1)}
+                onClick={() => void reloadRoutinesAndTriggersData(Number(compatUserId) || 1)}
                 className={secondaryButtonClass}
               >
-                ↻ Recarregar logs
+                ↻ Atualizar histórico
               </button>
             }
           >
-            {auditStatus === 'loading' && <EmptyState>Carregando logs de auditoria...</EmptyState>}
+            {auditStatus === 'loading' && <EmptyState>Carregando histórico de auditoria...</EmptyState>}
             {auditStatus === 'error' && <div className="p-4"><ErrorMessage message={`${auditError} Confirme se o script 09_triggers.sql foi executado.`} /></div>}
             {auditStatus === 'ready' && (
               auditLogs.length === 0 ? (
-                <EmptyState>Nenhum evento registrado ainda. Edite um animal ou execute os procedimentos 13 ou 14 para disparar o trigger.</EmptyState>
+                <EmptyState>Nenhum evento de auditoria registrado.</EmptyState>
               ) : (
-                <ReportTable headers={['Log', 'Animal', 'Evento', 'Disponibilidade (Antes → Depois)', 'Centro (Antes → Depois)', 'Detalhes', 'Data/Hora']}>
+                <ReportTable headers={['ID', 'Animal', 'Evento', 'Disponibilidade', 'Centro', 'Detalhes', 'Data']}>
                   {auditLogs.map((log) => (
                     <tr key={log.logId} className={tableRowClass}>
                       <Cell mono>#{log.logId}</Cell>
                       <Cell highlight>{log.animalName} <span className="font-mono text-xs text-[#819caf]">#{log.animalId}</span></Cell>
                       <Cell mono>{log.eventType}</Cell>
-                      <Cell mono>{log.previousAvailability ? '1' : '0'} → {log.newAvailability ? '1' : '0'}</Cell>
+                      <Cell mono>{log.previousAvailability ? 'Disponível' : 'Indisponível'} → {log.newAvailability ? 'Disponível' : 'Indisponível'}</Cell>
                       <Cell mono>#{log.previousCenterId} → #{log.newCenterId}</Cell>
                       <Cell>{log.details}</Cell>
                       <Cell mono>{dateTimeLabel(log.eventDate)}</Cell>
