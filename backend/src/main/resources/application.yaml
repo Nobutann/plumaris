@@ -2,6 +2,6 @@ spring:
   application:
     name: adocao
 database:
-  url: jdbc:mysql://127.0.0.1:3306/adocao_bd
-  username: root
+  url: ${DB_URL:jdbc:mysql://127.0.0.1:3306/adocao_bd}
+  username: ${DB_USERNAME:root}
   password: ${DB_PASSWORD}
