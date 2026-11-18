@@ -171,6 +171,10 @@ Cada usuário pode ter uma preferência. Para criar ou editar, informe `userId` 
 
 ### Estatísticas do dashboard
 
+Abra **Painel** e selecione espécie, centro e disponibilidade para recortar os animais. Use as datas inicial e final para restringir os interesses. **Aplicar filtros** consulta a API, **Limpar filtros** restaura a visão completa e **Atualizar dados** repete a consulta com os filtros aplicados. O painel informa o recorte e a data de referência usados pela API.
+
+Além dos indicadores e das medidas de idade, o painel mostra barras por espécie, faixa etária e centro, barras agrupadas de oferta e demanda por raça, uma linha de interesses mensais e boxplots por espécie. Os valores aparecem junto aos gráficos ou em **Valores por mês**. O total de centros cadastrados e as preferências explícitas por raça são identificados como globais.
+
 `GET /api/dashboard/estatisticas` retorna `referenceDate` (data do MySQL), `filters` (valores aplicados, ou `null` quando omitidos), `indicators`, `ageStatistics` e `series`. Exemplo: `/api/dashboard/estatisticas?species=Cao&centerId=32&available=true&startDate=2026-01-01&endDate=2026-03-31`. Todos os filtros são opcionais; `species` aceita `Cao` ou `Gato`, `centerId` deve ser um inteiro positivo e `available` aceita `true` ou `false`. As datas usam `YYYY-MM-DD`; cada limite funciona sozinho. Filtros inválidos retornam `400` com `detail`; sem correspondências, a rota retorna `200`.
 
 - `indicators` inclui totais do estoque, disponíveis e indisponíveis, percentual disponível (0–100, `null` sem animais), centros com animais, `globalRegisteredCenters` (todos os centros cadastrados, sem filtros) e total de interesses.

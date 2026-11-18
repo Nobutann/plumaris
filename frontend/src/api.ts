@@ -16,6 +16,8 @@ import type {
   CenterOperationsReport,
   CompleteAdoptionInput,
   DashboardData,
+  DashboardFilters,
+  DashboardStatisticsResponse,
   EmptyCenterReport,
   InterestInput,
   OlderAnimalReport,
@@ -66,12 +68,27 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return JSON.parse(text) as T
 }
 
+function listCenters(signal?: AbortSignal): Promise<Center[]> {
+  return request<Center[]>('/centros', { signal, cache: 'no-store' })
+}
+
 export const api = {
+  listCenters,
+
+  dashboardStatistics(filters: DashboardFilters, signal?: AbortSignal): Promise<DashboardStatisticsResponse> {
+    const params = new URLSearchParams()
+    for (const [key, value] of Object.entries({ ...filters })) {
+      if (value !== null && value !== '') params.set(key, String(value))
+    }
+    const query = params.size ? `?${params}` : ''
+    return request<DashboardStatisticsResponse>(`/dashboard/estatisticas${query}`, { signal, cache: 'no-store' })
+  },
+
   async loadDashboard(): Promise<DashboardData> {
     const [animals, breeds, centers, speciesSummary, ageGroupSummary] = await Promise.all([
       request<Animal[]>('/animais'),
       request<Breed[]>('/racas'),
-      request<Center[]>('/centros'),
+      listCenters(),
       request<SpeciesSummary[]>('/animais/resumo-por-especie'),
       request<AgeGroupSummary[]>('/animais/faixas-etarias'),
     ])

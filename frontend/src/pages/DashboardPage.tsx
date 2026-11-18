@@ -1,126 +1,251 @@
-import { ageGroupLabel, speciesLabel } from '../format'
-import type { DashboardData } from '../types'
-import { Availability, EmptyState, Panel, tableClass, tableHeadClass, tableRowClass } from '../components/ui'
+import { useEffect, useState } from 'react'
+import type { FormEvent } from 'react'
+import { api } from '../api'
+import { DashboardCharts } from '../components/DashboardCharts'
+import { ErrorMessage, Panel, fieldClass, primaryButtonClass, secondaryButtonClass } from '../components/ui'
+import { dateLabel, speciesLabel } from '../format'
+import type { Center, DashboardFilters, DashboardStatisticsResponse, Species } from '../types'
 
-interface DashboardPageProps {
-  data: DashboardData
-  onNavigate: (page: 'animals' | 'reports') => void
+const unfiltered: DashboardFilters = {
+  species: null, centerId: null, available: null, startDate: null, endDate: null,
 }
 
-const ageGroups = ['0-1', '2-4', '5+', 'Unknown']
+const counts = new Intl.NumberFormat('pt-BR')
+const measures = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 4 })
+const percentages = new Intl.NumberFormat('pt-BR', { style: 'percent', maximumFractionDigits: 2 })
+const labelClass = 'grid min-w-0 gap-1.5 text-sm text-[#d1e3ef]'
 
-export function DashboardPage({ data, onNavigate }: DashboardPageProps) {
-  const total = data.animals.length
-  const available = data.animals.filter((animal) => animal.available).length
-  const centers = new Set(data.animals.map((animal) => animal.centerId)).size
-  const maxSpecies = Math.max(1, ...data.speciesSummary.map((row) => row.total))
-  const maxAge = Math.max(1, ...ageGroups.map((group) => data.ageGroupSummary
-    .filter((row) => row.ageGroup === group)
-    .reduce((sum, row) => sum + row.total, 0)))
+interface DashboardPageProps {
+  appliedFilters: DashboardFilters | null
+  onApply: (filters: DashboardFilters) => void
+  refreshVersion: number
+  onRefresh: () => void
+}
+
+type StatisticsResult = { data: DashboardStatisticsResponse } | { error: string }
+
+function availabilityLabel(available: boolean | null) {
+  if (available === null) return 'Todas'
+  return available ? 'Disponíveis' : 'Indisponíveis'
+}
+
+function interestPeriod({ startDate, endDate }: DashboardFilters): string {
+  if (startDate && endDate) return `${dateLabel(startDate)} a ${dateLabel(endDate)}`
+  if (startDate) return `A partir de ${dateLabel(startDate)}`
+  if (endDate) return `Até ${dateLabel(endDate)}`
+  return 'Todo o período'
+}
+
+export function DashboardPage({ appliedFilters, onApply, refreshVersion, onRefresh }: DashboardPageProps) {
+  const requested = appliedFilters ?? unfiltered
+  const [draft, setDraft] = useState(requested)
+  const [dateError, setDateError] = useState(false)
+  const [{ centers, centerError, centersVersion }, setCenterOptions] = useState<{
+    centers: Center[]
+    centerError: string
+    centersVersion: number | null
+  }>({ centers: [], centerError: '', centersVersion: null })
+  const [settled, setSettled] = useState<{
+    filters: DashboardFilters
+    version: number
+    result: StatisticsResult
+  }>()
+
+  useEffect(() => {
+    const controller = new AbortController()
+    const { signal } = controller
+    api.listCenters(signal).then((centers) => {
+      if (signal.aborted) return
+      setCenterOptions({ centers, centerError: '', centersVersion: refreshVersion })
+    }).catch((cause: unknown) => {
+      if (signal.aborted) return
+      const centerError = cause instanceof Error ? cause.message : 'Não foi possível carregar os centros.'
+      setCenterOptions((previous) => ({ ...previous, centerError, centersVersion: refreshVersion }))
+    })
+    return () => controller.abort()
+  }, [refreshVersion])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    const { signal } = controller
+    function complete(result: StatisticsResult) {
+      if (!signal.aborted) setSettled({ filters: requested, version: refreshVersion, result })
+    }
+
+    api.dashboardStatistics(requested, signal).then((data) => {
+      complete({ data })
+    }).catch((cause: unknown) => {
+      complete({ error: cause instanceof Error ? cause.message : 'Não foi possível carregar as estatísticas.' })
+    })
+    return () => controller.abort()
+  }, [requested, refreshVersion])
+
+  const current = settled?.filters === requested && settled.version === refreshVersion ? settled.result : null
+  const data = current && 'data' in current ? current.data : null
+  const filters = data?.filters
+  const selectedCenter = data?.series.animalsByCenter.find((row) => row.centerId === filters?.centerId)?.centerName
+  const hasDraftChanges = draft.species !== requested.species || draft.centerId !== requested.centerId ||
+    draft.available !== requested.available || draft.startDate !== requested.startDate || draft.endDate !== requested.endDate
+
+  function centerLabel(id: number | null) {
+    return id === null ? 'Todos' : centers.find((center) => center.id === id)?.name ?? `Centro #${id}`
+  }
+
+  function apply(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const invalid = Boolean(draft.startDate && draft.endDate && draft.startDate > draft.endDate)
+    setDateError(invalid)
+    if (!invalid) onApply({ ...draft })
+  }
+
+  function clear() {
+    setDraft(unfiltered)
+    setDateError(false)
+    onApply({ ...unfiltered })
+  }
 
   return (
     <div className="space-y-5">
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Animais cadastrados" value={total} note="registros no catálogo" />
-        <StatCard label="Disponíveis" value={available} note="aptos para adoção" />
-        <StatCard label="Raças" value={data.breeds.length} note="opções cadastradas" />
-        <StatCard label="Centros" value={centers} note="com animais cadastrados" />
-      </div>
-
-      <div className="grid gap-5 xl:grid-cols-2">
-        <Panel title="Animais por espécie" detail="Consulta de totais e disponibilidade">
-          {data.speciesSummary.length === 0 ? <EmptyState>Não há animais cadastrados.</EmptyState> : (
-            <div className="space-y-5 p-5">
-              {data.speciesSummary.map((row) => (
-                <div key={row.species}>
-                  <div className="mb-2 flex items-baseline justify-between gap-3 text-sm">
-                    <span className="font-medium text-[#dfedf6]">{speciesLabel(row.species)}</span>
-                    <span className="font-mono text-[#a8cce2]">{row.total}</span>
-                  </div>
-                  <div className="flex h-3.5 overflow-hidden bg-[#0a1929]" role="img" aria-label={`${speciesLabel(row.species)}: ${row.available} disponíveis e ${row.unavailable} indisponíveis`}>
-                    <span className="bg-[#6daed3]" style={{ width: `${row.available / maxSpecies * 100}%` }} />
-                    <span className="bg-[#526a7e]" style={{ width: `${row.unavailable / maxSpecies * 100}%` }} />
-                  </div>
-                  <div className="mt-1.5 flex justify-between text-xs text-[#8ea9bb]">
-                    <span>{row.available} disponíveis</span>
-                    <span>{row.unavailable} indisponíveis</span>
-                  </div>
-                </div>
-              ))}
-              <div className="flex gap-4 border-t border-[#29465b] pt-3 text-xs text-[#a5bdcd]">
-                <Legend color="bg-[#6daed3]" label="Disponíveis" />
-                <Legend color="bg-[#526a7e]" label="Indisponíveis" />
-              </div>
+      <Panel title="Filtros" detail="Espécie, centro e disponibilidade recortam os animais. As datas afetam apenas os interesses.">
+        <form onSubmit={apply} className="space-y-3 p-4">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            <div className={labelClass}>
+              <label htmlFor="dashboard-species">Espécie</label>
+              <select id="dashboard-species" className={fieldClass} value={draft.species ?? ''} onChange={(event) => {
+                const value = event.target.value
+                const species: Species | null = value === 'Cao' || value === 'Gato' ? value : null
+                setDraft({ ...draft, species })
+              }}>
+                <option value="">Todas</option>
+                <option value="Cao">Cães</option>
+                <option value="Gato">Gatos</option>
+              </select>
             </div>
-          )}
-        </Panel>
-
-        <Panel title="Faixas etárias" detail="Distribuição dos animais por idade">
-          {data.ageGroupSummary.length === 0 ? <EmptyState>Não há dados para o gráfico.</EmptyState> : (
-            <div className="space-y-4 p-5">
-              {ageGroups.map((group) => {
-                const totalInGroup = data.ageGroupSummary
-                  .filter((row) => row.ageGroup === group)
-                  .reduce((sum, row) => sum + row.total, 0)
-
-                return (
-                  <div key={group} className="grid grid-cols-[115px_1fr_30px] items-center gap-3 text-xs sm:grid-cols-[135px_1fr_30px]">
-                    <span className="text-[#b7cbd9]">{ageGroupLabel(group)}</span>
-                    <div className="h-3.5 bg-[#0a1929]" role="img" aria-label={`${ageGroupLabel(group)}: ${totalInGroup} animais`}>
-                      <div className="h-full bg-[#6daed3]" style={{ width: `${totalInGroup / maxAge * 100}%` }} />
-                    </div>
-                    <span className="text-right font-mono text-[#a8cce2]">{totalInGroup}</span>
-                  </div>
-                )
-              })}
-              <p className="border-t border-[#29465b] pt-3 text-xs text-[#8ea9bb]">Idades calculadas pela consulta SQL do backend.</p>
+            <div className={labelClass}>
+              <label htmlFor="dashboard-center">Centro</label>
+              <select id="dashboard-center" className={fieldClass} value={draft.centerId ?? ''} onChange={(event) =>
+                setDraft({ ...draft, centerId: event.target.value ? Number(event.target.value) : null })}>
+                <option value="">Todos</option>
+                {draft.centerId !== null && !centers.some((center) => center.id === draft.centerId) && (
+                  <option value={draft.centerId}>{centerLabel(draft.centerId)}</option>
+                )}
+                {centers.map((center) => <option key={center.id} value={center.id}>{center.name}</option>)}
+              </select>
             </div>
-          )}
-        </Panel>
-      </div>
-
-      <Panel
-        title="Catálogo de animais"
-        detail="Registros recentes com centro e raça associados"
-        action={<button type="button" onClick={() => onNavigate('animals')} className="text-xs font-medium text-[#91c9e9] hover:underline">Ver todos →</button>}
-      >
-        {data.animals.length === 0 ? <EmptyState>Nenhum animal cadastrado.</EmptyState> : (
-          <div className="overflow-x-auto">
-            <table className={tableClass}>
-              <thead className={tableHeadClass}>
-                <tr><th className="px-4 py-2.5">Animal</th><th className="px-4 py-2.5">Espécie</th><th className="px-4 py-2.5">Raça</th><th className="px-4 py-2.5">Centro</th><th className="px-4 py-2.5">Situação</th></tr>
-              </thead>
-              <tbody>
-                {[...data.animals].reverse().slice(0, 7).map((animal) => (
-                  <tr key={animal.id} className={tableRowClass}>
-                    <td className="px-4 py-2.5 font-medium text-[#b7dbf0]">{animal.name}<span className="ml-2 font-mono text-xs text-[#7895a8]">#{animal.id}</span></td>
-                    <td className="px-4 py-2.5">{speciesLabel(animal.species)}</td>
-                    <td className="px-4 py-2.5">{animal.breedName || '—'}</td>
-                    <td className="px-4 py-2.5">{animal.centerName}</td>
-                    <td className="px-4 py-2.5"><Availability available={animal.available} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className={labelClass}>
+              <label htmlFor="dashboard-availability">Disponibilidade</label>
+              <select id="dashboard-availability" className={fieldClass} value={draft.available === null ? '' : String(draft.available)} onChange={(event) =>
+                setDraft({ ...draft, available: event.target.value ? event.target.value === 'true' : null })}>
+                <option value="">Todas</option>
+                <option value="true">Disponíveis</option>
+                <option value="false">Indisponíveis</option>
+              </select>
+            </div>
+            <label className={labelClass}>
+              Data inicial
+              <input type="date" min="0001-01-01" max="9999-12-31" className={fieldClass} value={draft.startDate ?? ''}
+                aria-invalid={dateError} aria-describedby={dateError ? 'dashboard-date-error' : undefined}
+                onChange={(event) => {
+                  setDraft({ ...draft, startDate: event.target.value || null })
+                  setDateError(false)
+                }} />
+            </label>
+            <label className={labelClass}>
+              Data final
+              <input type="date" min="0001-01-01" max="9999-12-31" className={fieldClass} value={draft.endDate ?? ''}
+                aria-invalid={dateError} aria-describedby={dateError ? 'dashboard-date-error' : undefined}
+                onChange={(event) => {
+                  setDraft({ ...draft, endDate: event.target.value || null })
+                  setDateError(false)
+                }} />
+            </label>
           </div>
-        )}
+          {dateError && <div id="dashboard-date-error"><ErrorMessage message="A data inicial deve ser anterior ou igual à data final." /></div>}
+          {centersVersion !== refreshVersion && <p role="status" className="text-xs text-[#9cb5c6]">Carregando opções de centros…</p>}
+          {centersVersion === refreshVersion && centerError && <ErrorMessage message={`Opções de centros: ${centerError}`} />}
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="submit" className={primaryButtonClass}>Aplicar filtros</button>
+            <button type="button" onClick={clear} className={secondaryButtonClass}>Limpar filtros</button>
+            {hasDraftChanges && <p className="text-xs text-[#a8cce2]">Há alterações de filtros ainda não aplicadas.</p>}
+          </div>
+        </form>
       </Panel>
 
-      <p className="text-xs text-[#7f9bac]">As tabelas e gráficos mostram dados atuais do MySQL. Veja os resultados completos na seção <button type="button" onClick={() => onNavigate('reports')} className="text-[#91c9e9] hover:underline">Consultas</button>.</p>
+      <div className="space-y-5">
+        {!current && (
+          <Panel title="Estatísticas">
+            <p role="status" className="p-5 text-sm text-[#b9d0df]">{settled ? 'Atualizando estatísticas…' : 'Carregando estatísticas…'}</p>
+          </Panel>
+        )}
+        {current && 'error' in current && (
+          <Panel title="Estatísticas">
+            <div className="space-y-3 p-4">
+              <ErrorMessage message={current.error} />
+              <button type="button" onClick={onRefresh} className={secondaryButtonClass}>Tentar novamente</button>
+            </div>
+          </Panel>
+        )}
+        {data && filters && (
+          <>
+            <div className="space-y-1 border border-[#2b4961] bg-[#112438] px-4 py-3 text-sm" role="status">
+              <p className="font-semibold text-[#e4f1fa]">Filtros aplicados</p>
+              <p>Espécie: {filters.species ? speciesLabel(filters.species) : 'Todas'} · Centro: {selectedCenter ?? centerLabel(filters.centerId)} · Disponibilidade: {availabilityLabel(filters.available)}</p>
+              <p>Período de interesses: {interestPeriod(filters)} · Data de referência: {dateLabel(data.referenceDate)}</p>
+            </div>
+            <DashboardIndicators data={data} />
+            <DashboardCharts series={data.series} />
+          </>
+        )}
+      </div>
     </div>
   )
 }
 
-function StatCard({ label, value, note }: { label: string; value: number; note: string }) {
+function DashboardIndicators({ data }: { data: DashboardStatisticsResponse }) {
+  const { indicators, ageStatistics: ages } = data
+
+  function ageMeasure(value: number | null, unit: string) {
+    if (value === null) return ages.validAgeCount === 0 ? 'Sem dados' : 'Indefinida'
+    return `${measures.format(value)} ${unit === 'anos' && value === 1 ? 'ano' : unit}`
+  }
+
   return (
-    <div className="border border-[#2b4961] bg-[#112438] p-4">
-      <p className="text-xs font-medium uppercase tracking-wider text-[#9cb9cc]">{label}</p>
-      <p className="mt-2 font-mono text-3xl text-[#e7f3fb]">{value}</p>
-      <p className="mt-1 text-xs text-[#7f9bac]">{note}</p>
-    </div>
+    <>
+      <Panel title="Indicadores">
+        <div className="grid grid-cols-2 gap-3 p-4 md:grid-cols-3 xl:grid-cols-4">
+          <Metric label="Total de animais" value={counts.format(indicators.totalAnimals)} />
+          <Metric label="Disponíveis" value={counts.format(indicators.availableAnimals)} />
+          <Metric label="Indisponíveis" value={counts.format(indicators.unavailableAnimals)} />
+          <Metric label="Percentual disponível" value={indicators.availablePercentage === null
+            ? 'Indefinido (sem animais)' : percentages.format(indicators.availablePercentage / 100)} />
+          <Metric label="Centros com animais no recorte" value={counts.format(indicators.centersWithAnimals)} />
+          <Metric label="Centros cadastrados (global)" value={counts.format(indicators.globalRegisteredCenters)} />
+          <Metric label="Interesses no recorte e período" value={counts.format(indicators.totalInterests)} />
+        </div>
+      </Panel>
+      <Panel title="Estatísticas de idade" detail={ages.validAgeCount
+        ? 'Idades válidas em anos completos no recorte.'
+        : 'As medidas são indefinidas sem idades válidas.'}>
+        <div className="grid grid-cols-2 gap-3 p-4 md:grid-cols-3 xl:grid-cols-4">
+          <Metric label="Média" value={ageMeasure(ages.mean, 'anos')} />
+          <Metric label="Mediana" value={ageMeasure(ages.median, 'anos')} />
+          <Metric label="Modas" value={ages.validAgeCount === 0 ? 'Sem dados' : ages.modes.length === 0 ? 'Sem moda'
+            : ages.modes.map((age) => ageMeasure(age, 'anos')).join(' · ')} />
+          <Metric label="Variância populacional" value={ageMeasure(ages.populationVariance, 'anos²')} />
+          <Metric label="Desvio padrão populacional" value={ageMeasure(ages.populationStandardDeviation, 'anos')} />
+          <Metric label="Idades válidas" value={counts.format(ages.validAgeCount)} />
+          <Metric label="Idades excluídas" value={counts.format(ages.excludedAgeCount)} />
+        </div>
+      </Panel>
+    </>
   )
 }
 
-function Legend({ color, label }: { color: string; label: string }) {
-  return <span className="flex items-center gap-1.5"><span className={`size-2.5 ${color}`} />{label}</span>
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <dl className="min-w-0 border border-[#2b4961] bg-[#0d1b2b] p-3">
+      <dt className="text-xs font-medium text-[#a8c3d4]">{label}</dt>
+      <dd className="mt-1 wrap-break-word font-mono text-lg text-[#e7f3fb] sm:text-xl">{value}</dd>
+    </dl>
+  )
 }

@@ -95,6 +95,61 @@ export interface DashboardData {
   ageGroupSummary: AgeGroupSummary[]
 }
 
+export interface DashboardFilters {
+  species: Species | null
+  centerId: number | null
+  available: boolean | null
+  startDate: string | null
+  endDate: string | null
+}
+
+export interface SpeciesAgeBoxplot {
+  species: Species
+  count: number
+  minimum: number | null
+  firstQuartile: number | null
+  median: number | null
+  thirdQuartile: number | null
+  maximum: number | null
+}
+
+export interface DashboardStatisticsResponse {
+  referenceDate: string
+  filters: DashboardFilters
+  indicators: {
+    totalAnimals: number
+    availableAnimals: number
+    unavailableAnimals: number
+    availablePercentage: number | null
+    centersWithAnimals: number
+    globalRegisteredCenters: number
+    totalInterests: number
+  }
+  ageStatistics: {
+    validAgeCount: number
+    excludedAgeCount: number
+    mean: number | null
+    median: number | null
+    modes: number[]
+    populationVariance: number | null
+    populationStandardDeviation: number | null
+  }
+  series: {
+    animalsBySpecies: SpeciesSummary[]
+    ageGroups: Pick<AgeGroupSummary, 'ageGroup' | 'total'>[]
+    animalsByCenter: { centerId: number; centerName: string; total: number; available: number; unavailable: number }[]
+    supplyDemandByBreed: {
+      breedId: number
+      breedName: string
+      species: Species
+      availableSupply: number
+      globalExplicitBreedPreferences: number
+    }[]
+    interestsByMonth: { month: string; total: number }[]
+    ageBoxplotBySpecies: SpeciesAgeBoxplot[]
+  }
+}
+
 export interface EmptyCenterReport {
   centerId: number
   centerName: string

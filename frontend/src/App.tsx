@@ -7,7 +7,7 @@ import { CentersPage } from './pages/CentersPage'
 import { PreferencesPage } from './pages/PreferencesPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { AdvancedReportsPage } from './pages/AdvancedReportsPage'
-import type { DashboardData } from './types'
+import type { DashboardData, DashboardFilters } from './types'
 
 type Page = 'dashboard' | 'animals' | 'breeds' | 'reports' | 'preferences' | 'centers'
 
@@ -21,7 +21,7 @@ const navigation: { id: Page; label: string; number: string }[] = [
 ]
 
 const pageCopy: Record<Page, { title: string; description: string }> = {
-  dashboard: { title: 'Visão geral', description: 'Panorama dos animais e centros de adoção cadastrados.' },
+  dashboard: { title: 'Dashboard estatístico', description: 'Animais, centros de adoção e interesses em adoção.' },
   animals: { title: 'Animais', description: 'Consulte, cadastre e mantenha os registros do catálogo.' },
   breeds: { title: 'Raças', description: 'Gerencie as raças disponíveis para cães e gatos.' },
   centers: { title: 'Centros de adoção', description: 'Gerencie os centros, seus endereços e e-mails de conta.' },
@@ -31,6 +31,9 @@ const pageCopy: Record<Page, { title: string; description: string }> = {
 
 function App() {
   const [page, setPage] = useState<Page>('dashboard')
+  const [dashboardFilters, setDashboardFilters] = useState<DashboardFilters | null>(null)
+  const [dashboardRefresh, setDashboardRefresh] = useState(0)
+  const [catalogRequested, setCatalogRequested] = useState(false)
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -42,6 +45,8 @@ function App() {
   }, [])
 
   useEffect(() => {
+    if (!catalogRequested) return
+
     let active = true
     api.loadDashboard()
       .then((nextData) => {
@@ -54,7 +59,11 @@ function App() {
         if (active) setLoading(false)
       })
     return () => { active = false }
-  }, [])
+  }, [catalogRequested])
+
+  function refreshDashboard() {
+    setDashboardRefresh((version) => version + 1)
+  }
 
   async function retry() {
     setLoading(true)
@@ -68,9 +77,12 @@ function App() {
   }
 
   function navigate(nextPage: Page) {
+    if (nextPage !== 'dashboard' && nextPage !== 'preferences') setCatalogRequested(true)
     setPage(nextPage)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
+
+  const showsCatalog = page !== 'dashboard' && page !== 'preferences'
 
   return (
     <div className="min-h-screen bg-[#0b1929] text-[#c8d8e3]">
@@ -101,10 +113,10 @@ function App() {
 
           <div className="hidden border-t border-[#2b4961] px-5 py-5 lg:block">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-[#7090a4]">Conexão</p>
-            <p className="mt-2 flex items-center gap-2 text-xs text-[#a9c3d3]">
+            {catalogRequested && page !== 'dashboard' && <p className="mt-2 flex items-center gap-2 text-xs text-[#a9c3d3]">
               <span className={`size-1.5 rounded-full ${data && !error ? 'bg-[#7bc69a]' : 'bg-[#d09383]'}`} />
               {data && !error ? 'API conectada' : 'Aguardando API'}
-            </p>
+            </p>}
             <p className="mt-2 text-xs leading-5 text-[#718fa3]">React · Spring Boot · MySQL</p>
           </div>
         </aside>
@@ -118,22 +130,32 @@ function App() {
               <h1 className="text-2xl font-semibold tracking-tight text-[#eaf4fa]">{pageCopy[page].title}</h1>
               <p className="mt-1 text-sm text-[#9cb5c6]">{pageCopy[page].description}</p>
             </div>
-            {page !== 'preferences' && <button type="button" onClick={() => void retry()} disabled={loading} className={secondaryButtonClass}>
+            {page === 'dashboard' && <button type="button" onClick={refreshDashboard} className={secondaryButtonClass}>
+              ↻ Atualizar dados
+            </button>}
+            {showsCatalog && <button type="button" onClick={() => void retry()} disabled={loading} className={secondaryButtonClass}>
               {loading ? 'Atualizando...' : '↻ Atualizar dados'}
             </button>}
           </header>
 
           <div className="space-y-5 p-5 sm:p-7">
             {page === 'preferences' && <PreferencesPage />}
-            {page !== 'preferences' && error && <ErrorMessage message={error} />}
-            {page !== 'preferences' && loading && !data && <div className="border border-[#2b4961] bg-[#112438] p-10 text-center text-sm text-[#9bb5c6]">Carregando dados do banco...</div>}
-            {page !== 'preferences' && !loading && !data && (
+            {showsCatalog && error && <ErrorMessage message={error} />}
+            {showsCatalog && loading && !data && <div className="border border-[#2b4961] bg-[#112438] p-10 text-center text-sm text-[#9bb5c6]">Carregando dados do banco...</div>}
+            {showsCatalog && !loading && !data && (
               <div className="border border-[#2b4961] bg-[#112438] p-8 text-center">
                 <p className="text-sm text-[#b9d0df]">Inicie a API Spring Boot na porta 8080 e tente novamente.</p>
                 <button type="button" onClick={() => void retry()} className="mt-4 text-sm font-semibold text-[#91c9e9] hover:underline">Tentar novamente</button>
               </div>
             )}
-            {data && page === 'dashboard' && <DashboardPage data={data} onNavigate={navigate} />}
+            {page === 'dashboard' && (
+              <DashboardPage
+                appliedFilters={dashboardFilters}
+                onApply={setDashboardFilters}
+                refreshVersion={dashboardRefresh}
+                onRefresh={refreshDashboard}
+              />
+            )}
             {data && page === 'animals' && <AnimalsPage animals={data.animals} breeds={data.breeds} centers={data.centers} refresh={refresh} />}
             {data && page === 'breeds' && <BreedsPage breeds={data.breeds} refresh={refresh} />}
             {data && page === 'centers' && <CentersPage centers={data.centers} refresh={refresh} />}
