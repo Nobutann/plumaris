@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { ErrorMessage, fieldClass, primaryButtonClass, secondaryButtonClass } from '../components/ui'
 import { speciesLabel } from '../format'
-import type { DashboardData, ReportFilters, UserSummary } from '../types'
+import type { CatalogData, ReportFilters, UserSummary } from '../types'
 
 type FilterName = keyof ReportFilters
 type Option<T> = { value: T; label: string }
@@ -26,7 +26,7 @@ const labels: Record<FilterName, string> = {
 
 interface ReportFilterFormProps {
   fields: readonly FilterName[]
-  data: DashboardData
+  data: CatalogData
   draft: ReportFilters
   applied: ReportFilters
   onEdit: (draft: ReportFilters) => void

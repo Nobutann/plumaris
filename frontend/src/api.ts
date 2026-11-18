@@ -16,7 +16,6 @@ import type {
   CenterLocationFilters,
   CenterOperationsReport,
   CompleteAdoptionInput,
-  DashboardData,
   DashboardFilters,
   DashboardStatisticsResponse,
   EmptyCenterReport,
@@ -49,8 +48,9 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
         ...options?.headers,
       },
     })
-  } catch {
-    throw new Error('Não foi possível conectar à API. Verifique se o backend está em execução.')
+  } catch (cause) {
+    if (options?.signal?.aborted) throw cause
+    throw new Error('Não foi possível conectar à API. Verifique se o backend está em execução.', { cause })
   }
 
   if (!response.ok) {
@@ -95,16 +95,8 @@ export const api = {
     return request<DashboardStatisticsResponse>(`/dashboard/estatisticas${query}`, { signal, cache: 'no-store' })
   },
 
-  async loadDashboard(): Promise<DashboardData> {
-    const [animals, breeds, centers, speciesSummary, ageGroupSummary] = await Promise.all([
-      request<Animal[]>('/animais'),
-      request<Breed[]>('/racas'),
-      listCenters(),
-      request<SpeciesSummary[]>('/animais/resumo-por-especie'),
-      request<AgeGroupSummary[]>('/animais/faixas-etarias'),
-    ])
-
-    return { animals, breeds, centers, speciesSummary, ageGroupSummary }
+  listBreeds(signal?: AbortSignal): Promise<Breed[]> {
+    return request<Breed[]>('/racas', { signal, cache: 'no-store' })
   },
 
   animals(filters: AnimalReportFilters, signal?: AbortSignal): Promise<Animal[]> {
@@ -213,12 +205,12 @@ export const api = {
     return request<void>(`/preferencias/${id}`, { method: 'DELETE' })
   },
 
-  animalPriorities(): Promise<AnimalPriorityReport[]> {
-    return request<AnimalPriorityReport[]>('/relatorios/prioridade-adocao')
+  animalPriorities(signal?: AbortSignal): Promise<AnimalPriorityReport[]> {
+    return requestReport('/relatorios/prioridade-adocao', {}, signal)
   },
 
-  userCompatibility(userId: number): Promise<AnimalCompatibilityReport[]> {
-    return request<AnimalCompatibilityReport[]>(`/relatorios/compatibilidade-usuario?userId=${userId}`)
+  userCompatibility(userId: number, signal?: AbortSignal): Promise<AnimalCompatibilityReport[]> {
+    return requestReport('/relatorios/compatibilidade-usuario', { userId }, signal)
   },
 
   completeAdoption(input: CompleteAdoptionInput): Promise<AdoptionCompletionResult> {
@@ -235,8 +227,8 @@ export const api = {
     })
   },
 
-  auditLogs(): Promise<AnimalAuditLogReport[]> {
-    return request<AnimalAuditLogReport[]>('/relatorios/logs-auditoria')
+  auditLogs(signal?: AbortSignal): Promise<AnimalAuditLogReport[]> {
+    return requestReport('/relatorios/logs-auditoria', {}, signal)
   },
 
   registerInterest(input: InterestInput): Promise<void> {

@@ -1,15 +1,12 @@
-import { useCallback, useEffect, useState } from 'react'
-import type { FormEvent, ReactNode } from 'react'
+import { useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
+import type { FormEvent, ReactNode, Ref } from 'react'
 import { api } from '../api'
 import { ReportFilterForm } from './ReportFilterForm'
 import { ageGroupLabel, dateLabel, sexLabel, sizeLabel, speciesLabel } from '../format'
 import type {
   AdoptionCompletionResult,
   Animal,
-  AnimalAuditLogReport,
-  AnimalCompatibilityReport,
-  AnimalPriorityReport,
-  DashboardData,
+  CatalogData,
   RedistributionResult,
   ReportFilters,
   UnmetPreferenceReport,
@@ -46,7 +43,7 @@ const reports = [
 ] as const
 
 type ReportId = typeof reports[number]['id']
-type LoadStatus = 'loading' | 'ready' | 'error'
+type RefreshRequest = { catalog: boolean; afterOperation: boolean }
 
 const animalFilters = ['species', 'centerId', 'available'] as const
 const reportFields: Partial<Record<ReportId, readonly (keyof ReportFilters)[]>> = {
@@ -64,25 +61,25 @@ const noFilters: ReportFilters = {}
 
 export function AdvancedReportsPage({
   data,
-  refresh,
+  visible,
+  refreshCatalog,
+  refreshRef,
+  onOperationCompleted,
 }: {
-  data: DashboardData
-  refresh: () => Promise<void>
+  data: CatalogData
+  visible: boolean
+  refreshCatalog: () => Promise<void>
+  refreshRef: Ref<() => Promise<void>>
+  onOperationCompleted: () => void
 }) {
   const [activeReport, setActiveReport] = useState<ReportId>(1)
-  const [userId, setUserId] = useState('1')
+  const [recommendationUserId, setRecommendationUserId] = useState('1')
   const [recommendation, setRecommendation] = useState({ userId: 1 })
   const [drafts, setDrafts] = useState<Partial<Record<ReportId, ReportFilters>>>({})
   const [applied, setApplied] = useState<Partial<Record<ReportId, ReportFilters>>>({})
 
-  const [priorities, setPriorities] = useState<AnimalPriorityReport[]>([])
-  const [priorityStatus, setPriorityStatus] = useState<LoadStatus>('loading')
-  const [priorityError, setPriorityError] = useState('')
-
   const [compatUserId, setCompatUserId] = useState('1')
-  const [compatibilities, setCompatibilities] = useState<AnimalCompatibilityReport[]>([])
-  const [compatStatus, setCompatStatus] = useState<LoadStatus>('loading')
-  const [compatError, setCompatError] = useState('')
+  const [compatibility, setCompatibility] = useState({ userId: 1 })
 
   const [adoptAnimalId, setAdoptAnimalId] = useState('1')
   const [adoptUserId, setAdoptUserId] = useState('1')
@@ -96,123 +93,71 @@ export function AdvancedReportsPage({
   const [redistributeError, setRedistributeError] = useState('')
   const [redistributeResult, setRedistributeResult] = useState<RedistributionResult | null>(null)
 
-  const [auditLogs, setAuditLogs] = useState<AnimalAuditLogReport[]>([])
-  const [auditStatus, setAuditStatus] = useState<LoadStatus>('loading')
-  const [auditError, setAuditError] = useState('')
-
   const [interestUserId, setInterestUserId] = useState('1')
   const [interestAnimalId, setInterestAnimalId] = useState('1')
   const [interestSubmitting, setInterestSubmitting] = useState(false)
   const [interestError, setInterestError] = useState('')
   const [interestSuccess, setInterestSuccess] = useState('')
 
-  const reloadRoutinesAndTriggersData = useCallback(async (targetUserId: number) => {
-    setPriorityStatus('loading')
-    setPriorityError('')
-    api.animalPriorities()
-      .then((rows) => {
-        setPriorities(rows)
-        setPriorityStatus('ready')
-      })
-      .catch((cause: unknown) => {
-        setPriorityError(cause instanceof Error ? cause.message : 'Não foi possível carregar a classificação de prioridade.')
-        setPriorityStatus('error')
-      })
-
-    setCompatStatus('loading')
-    setCompatError('')
-    api.userCompatibility(targetUserId)
-      .then((rows) => {
-        setCompatibilities(rows)
-        setCompatStatus('ready')
-      })
-      .catch((cause: unknown) => {
-        setCompatError(cause instanceof Error ? cause.message : 'Não foi possível carregar o índice de compatibilidade.')
-        setCompatStatus('error')
-      })
-
-    setAuditStatus('loading')
-    setAuditError('')
-    api.auditLogs()
-      .then((rows) => {
-        setAuditLogs(rows)
-        setAuditStatus('ready')
-      })
-      .catch((cause: unknown) => {
-        setAuditError(cause instanceof Error ? cause.message : 'Não foi possível carregar o histórico de auditoria.')
-        setAuditStatus('error')
-      })
-  }, [])
+  const reloadRows = useRef<(() => Promise<void>) | null>(null)
+  const pendingRefresh = useRef<RefreshRequest | null>(null)
+  const mounted = useRef(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const [refreshError, setRefreshError] = useState('')
 
   useEffect(() => {
-    let active = true
-
-    api.animalPriorities()
-      .then((rows) => {
-        if (active) {
-          setPriorities(rows)
-          setPriorityStatus('ready')
-        }
-      })
-      .catch((cause: unknown) => {
-        if (active) {
-          setPriorityError(cause instanceof Error ? cause.message : 'Não foi possível carregar a classificação de prioridade.')
-          setPriorityStatus('error')
-        }
-      })
-
-    api.userCompatibility(1)
-      .then((rows) => {
-        if (active) {
-          setCompatibilities(rows)
-          setCompatStatus('ready')
-        }
-      })
-      .catch((cause: unknown) => {
-        if (active) {
-          setCompatError(cause instanceof Error ? cause.message : 'Não foi possível carregar o índice de compatibilidade.')
-          setCompatStatus('error')
-        }
-      })
-
-    api.auditLogs()
-      .then((rows) => {
-        if (active) {
-          setAuditLogs(rows)
-          setAuditStatus('ready')
-        }
-      })
-      .catch((cause: unknown) => {
-        if (active) {
-          setAuditError(cause instanceof Error ? cause.message : 'Não foi possível carregar o histórico de auditoria.')
-          setAuditStatus('error')
-        }
-      })
-
-    return () => { active = false }
+    mounted.current = true
+    return () => { mounted.current = false }
   }, [])
+
+  async function reloadReportData({ catalog = false, afterOperation = false }: Partial<RefreshRequest> = {}) {
+    const request = {
+      catalog: catalog || pendingRefresh.current?.catalog === true,
+      afterOperation: afterOperation || pendingRefresh.current?.afterOperation === true,
+    }
+    pendingRefresh.current = request
+    setRefreshing(true)
+    setRefreshError('')
+
+    const [catalogResult, reportResult] = await Promise.allSettled([
+      request.catalog ? refreshCatalog() : undefined,
+      reloadRows.current?.(),
+    ])
+    if (!mounted.current || pendingRefresh.current !== request) return
+
+    const catalogFailed = catalogResult.status === 'rejected'
+    const reportFailed = reportResult.status === 'rejected'
+    pendingRefresh.current = catalogFailed || reportFailed
+      ? { catalog: catalogFailed, afterOperation: request.afterOperation }
+      : null
+    setRefreshing(false)
+
+    if ((catalogFailed || reportFailed) && request.afterOperation) {
+      setRefreshError('A operação foi concluída, mas alguns dados não puderam ser atualizados.')
+    } else if (catalogFailed) {
+      const cause: unknown = catalogResult.reason
+      setRefreshError(cause instanceof Error ? cause.message : 'Não foi possível atualizar o catálogo.')
+    }
+  }
+
+  function refreshCurrentReport() {
+    return reloadReportData({ catalog: activeReport >= 13 })
+  }
+
+  useImperativeHandle(refreshRef, () => refreshCurrentReport)
 
   function searchRecommendations(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const parsedId = Number(userId)
+    const parsedId = Number(recommendationUserId)
     if (!Number.isInteger(parsedId) || parsedId < 1 || parsedId > 2_147_483_647) return
     setRecommendation({ userId: parsedId })
   }
 
-  async function searchCompatibility(event: FormEvent<HTMLFormElement>) {
+  function searchCompatibility(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const parsedId = Number(compatUserId)
-    if (!Number.isInteger(parsedId) || parsedId < 1) return
-
-    setCompatStatus('loading')
-    setCompatError('')
-    try {
-      setCompatibilities(await api.userCompatibility(parsedId))
-      setCompatStatus('ready')
-    } catch (cause) {
-      setCompatError(cause instanceof Error ? cause.message : 'Não foi possível calcular a compatibilidade.')
-      setCompatStatus('error')
-    }
+    if (!Number.isInteger(parsedId) || parsedId < 1 || parsedId > 2_147_483_647) return
+    setCompatibility({ userId: parsedId })
   }
 
   async function handleCompleteAdoption(event: FormEvent<HTMLFormElement>) {
@@ -225,14 +170,16 @@ export function AdvancedReportsPage({
         animalId: Number(adoptAnimalId),
         userId: Number(adoptUserId),
       })
+      if (!mounted.current) return
       setAdoptResult(result)
-      await refresh()
-      await reloadRoutinesAndTriggersData(Number(compatUserId) || 1)
     } catch (cause) {
-      setAdoptError(cause instanceof Error ? cause.message : 'Não foi possível concluir a adoção.')
+      if (mounted.current) setAdoptError(cause instanceof Error ? cause.message : 'Não foi possível concluir a adoção.')
+      return
     } finally {
-      setAdoptSubmitting(false)
+      if (mounted.current) setAdoptSubmitting(false)
     }
+    onOperationCompleted()
+    await reloadReportData({ catalog: true, afterOperation: true })
   }
 
   async function handleRedistribute(event: FormEvent<HTMLFormElement>) {
@@ -245,14 +192,16 @@ export function AdvancedReportsPage({
         sourceCenterId: Number(sourceCenterId),
         maxPerUnit: Number(maxPerUnit),
       })
+      if (!mounted.current) return
       setRedistributeResult(result)
-      await refresh()
-      await reloadRoutinesAndTriggersData(Number(compatUserId) || 1)
     } catch (cause) {
-      setRedistributeError(cause instanceof Error ? cause.message : 'Não foi possível redistribuir os animais.')
+      if (mounted.current) setRedistributeError(cause instanceof Error ? cause.message : 'Não foi possível redistribuir os animais.')
+      return
     } finally {
-      setRedistributeSubmitting(false)
+      if (mounted.current) setRedistributeSubmitting(false)
     }
+    onOperationCompleted()
+    await reloadReportData({ catalog: true, afterOperation: true })
   }
 
   async function handleRegisterInterest(event: FormEvent<HTMLFormElement>) {
@@ -265,16 +214,24 @@ export function AdvancedReportsPage({
         userId: Number(interestUserId),
         animalId: Number(interestAnimalId),
       })
+      if (!mounted.current) return
       setInterestSuccess(`Interesse registrado para o usuário #${interestUserId} no animal #${interestAnimalId}.`)
-      await reloadRoutinesAndTriggersData(Number(compatUserId) || 1)
     } catch (cause) {
-      setInterestError(cause instanceof Error ? cause.message : 'Não foi possível registrar o interesse.')
+      if (mounted.current) setInterestError(cause instanceof Error ? cause.message : 'Não foi possível registrar o interesse.')
+      return
     } finally {
-      setInterestSubmitting(false)
+      if (mounted.current) setInterestSubmitting(false)
     }
+    onOperationCompleted()
+    await reloadReportData({ afterOperation: true })
   }
 
-  const reportRequest = { filters: applied[activeReport] ?? noFilters, catalog: data }
+  if (!visible) return null
+
+  const reportRequest = {
+    filters: applied[activeReport] ?? noFilters,
+    onRetry: () => void reloadReportData(),
+  }
   const fields = reportFields[activeReport]
   const filterForm = fields && (
     <ReportFilterForm fields={fields} data={data} draft={drafts[activeReport] ?? noFilters}
@@ -310,10 +267,22 @@ export function AdvancedReportsPage({
         </div>
       </Panel>
 
+      <div aria-live="polite">
+        {refreshing && <p className="text-sm text-[#9bb5c6]">Atualizando dados...</p>}
+        {refreshError && (
+          <div className="space-y-3">
+            <ErrorMessage message={refreshError} />
+            <button type="button" className={secondaryButtonClass} onClick={() => void reloadReportData()}>
+              Tentar atualizar dados novamente
+            </button>
+          </div>
+        )}
+      </div>
+
       {activeReport === 1 && (
         <Panel title="01 · Animais e centros" detail="JOIN entre Animal, Centro_Adocao e Raca">
           {filterForm}
-          <ReportRows {...reportRequest} load={api.animals}>
+          <ReportRows reloadRef={reloadRows} {...reportRequest} load={api.animals}>
             {(animals) => <AnimalResults animals={animals} />}
           </ReportRows>
         </Panel>
@@ -322,7 +291,7 @@ export function AdvancedReportsPage({
       {activeReport === 2 && (
         <Panel title="02 · Resumo por espécie" detail="Quantidade total, disponível e indisponível por espécie">
           {filterForm}
-          <ReportRows {...reportRequest} load={api.speciesSummary}>
+          <ReportRows reloadRef={reloadRows} {...reportRequest} load={api.speciesSummary}>
             {(rows) => (
               <ReportTable headers={['Espécie', 'Total', 'Disponíveis', 'Indisponíveis']}>
                 {rows.map((row) => <tr key={row.species} className={tableRowClass}>
@@ -337,7 +306,7 @@ export function AdvancedReportsPage({
       {activeReport === 3 && (
         <Panel title="03 · Faixas etárias" detail="Idade calculada no banco a partir da data de nascimento">
           {filterForm}
-          <ReportRows {...reportRequest} load={api.ageGroupSummary}>
+          <ReportRows reloadRef={reloadRows} {...reportRequest} load={api.ageGroupSummary}>
             {(rows) => (
               <ReportTable headers={['Espécie', 'Faixa etária', 'Animais']}>
                 {rows.map((row) => <tr key={`${row.species}-${row.ageGroup}`} className={tableRowClass}>
@@ -353,12 +322,12 @@ export function AdvancedReportsPage({
         <Panel title="04 · Recomendações" detail="Animais disponíveis que atendem às preferências do usuário informado">
           <form onSubmit={searchRecommendations} className="flex flex-wrap items-end gap-3 border-b border-[#29465b] p-4">
             <label className="block w-48 text-xs font-medium text-[#a9c2d2]">ID do usuário
-              <input className={`${fieldClass} mt-1.5`} type="number" min="1" step="1" max="2147483647" required value={userId} onChange={(event) => setUserId(event.target.value)} />
+              <input className={`${fieldClass} mt-1.5`} type="number" min="1" step="1" max="2147483647" required value={recommendationUserId} onChange={(event) => setRecommendationUserId(event.target.value)} />
             </label>
             <button type="submit" className={primaryButtonClass}>Buscar recomendações</button>
           </form>
           <p className="px-4 pt-3 text-xs text-[#a9c2d2]">Usuário consultado · #{recommendation.userId}</p>
-          <ReportRows filters={recommendation} load={loadRecommendations}
+          <ReportRows reloadRef={reloadRows} {...reportRequest} filters={recommendation} load={loadRecommendations}
             emptyMessage="Nenhum animal corresponde às preferências deste usuário.">
             {(animals) => <AnimalResults animals={animals} />}
           </ReportRows>
@@ -368,7 +337,7 @@ export function AdvancedReportsPage({
       {activeReport === 5 && (
         <Panel title="05 · Centros sem animais disponíveis" detail="Anti join com LEFT JOIN entre Centro_Adocao e Animal">
           {filterForm}
-          <ReportRows {...reportRequest} load={api.emptyCenters}>
+          <ReportRows reloadRef={reloadRows} {...reportRequest} load={api.emptyCenters}>
             {(rows) => (
               <ReportTable headers={['ID', 'Centro', 'Cidade', 'Estado']}>
                 {rows.map((row) => <tr key={row.centerId} className={tableRowClass}>
@@ -383,7 +352,7 @@ export function AdvancedReportsPage({
       {activeReport === 6 && (
         <Panel title="06 · Cobertura entre raças e animais" detail="Full outer join emulado no MySQL com dois LEFT JOINs e UNION ALL">
           {filterForm}
-          <ReportRows {...reportRequest} load={api.breedAnimalCoverage}>
+          <ReportRows reloadRef={reloadRows} {...reportRequest} load={api.breedAnimalCoverage}>
             {(rows) => (
               <ReportTable headers={['Raça', 'Espécie da raça', 'Animal', 'Espécie do animal', 'Situação']}>
                 {rows.map((row, index) => <tr key={`${row.breedId ?? 'sem-raca'}-${row.animalId ?? 'sem-animal'}-${index}`} className={tableRowClass}>
@@ -402,7 +371,7 @@ export function AdvancedReportsPage({
       {activeReport === 7 && (
         <Panel title="07 · Preferências não atendidas" detail="Subconsulta correlacionada com NOT EXISTS">
           {filterForm}
-          <ReportRows {...reportRequest} load={api.unmetPreferences}>
+          <ReportRows reloadRef={reloadRows} {...reportRequest} load={api.unmetPreferences}>
             {(rows) => (
               <ReportTable headers={['Usuário', 'E-mail', 'Preferência', 'Idade desejada']}>
                 {rows.map((row) => <tr key={row.userId} className={tableRowClass}>
@@ -418,7 +387,7 @@ export function AdvancedReportsPage({
       {activeReport === 8 && (
         <Panel title="08 · Animais acima da média etária" detail="Subconsulta correlacionada que calcula a média por espécie">
           {filterForm}
-          <ReportRows {...reportRequest} load={api.olderAnimals}>
+          <ReportRows reloadRef={reloadRows} {...reportRequest} load={api.olderAnimals}>
             {(rows) => (
               <ReportTable headers={['Animal', 'Espécie', 'Idade', 'Média da espécie', 'Centro']}>
                 {rows.map((row) => <tr key={row.animalId} className={tableRowClass}>
@@ -434,7 +403,7 @@ export function AdvancedReportsPage({
       {activeReport === 9 && (
         <Panel title="09 · Painel operacional dos centros" detail="Visão com Centro_Adocao, Vinculado_A, Animal e Interesse">
           {filterForm}
-          <ReportRows {...reportRequest} load={api.centerOperations}>
+          <ReportRows reloadRef={reloadRows} {...reportRequest} load={api.centerOperations}>
             {(rows) => (
               <ReportTable headers={['Centro', 'Centro principal', 'Animais', 'Disponíveis', 'Indisponíveis', 'Interesses', 'Último interesse']}>
                 {rows.map((row) => <tr key={row.centerId} className={tableRowClass}>
@@ -451,7 +420,7 @@ export function AdvancedReportsPage({
       {activeReport === 10 && (
         <Panel title="10 · Oferta e demanda por raça" detail="Visão com Raca, Preferencia, Animal e Interesse">
           {filterForm}
-          <ReportRows {...reportRequest} load={api.breedSupplyDemand}>
+          <ReportRows reloadRef={reloadRows} {...reportRequest} load={api.breedSupplyDemand}>
             {(rows) => (
               <ReportTable headers={['Raça', 'Espécie', 'Preferências', 'Animais', 'Disponíveis', 'Interessados', 'Saldo', 'Situação']}>
                 {rows.map((row) => <tr key={row.breedId} className={tableRowClass}>
@@ -470,12 +439,10 @@ export function AdvancedReportsPage({
           title="11 · Prioridade de adoção"
           detail="Classificação calculada pela função fn_classificar_prioridade_adocao conforme disponibilidade, idade, porte e procura"
         >
-          {priorityStatus === 'loading' && <EmptyState>Carregando classificação de prioridade...</EmptyState>}
-          {priorityStatus === 'error' && <div className="p-4"><ErrorMessage message={`${priorityError} Confirme se o script 07_funcoes.sql foi executado.`} /></div>}
-          {priorityStatus === 'ready' && (
-            priorities.length === 0 ? <EmptyState>Nenhum animal cadastrado.</EmptyState> : (
+          <ReportRows reloadRef={reloadRows} {...reportRequest} load={loadPriorities} emptyMessage="Nenhum animal cadastrado.">
+            {(rows) => (
               <ReportTable headers={['ID', 'Animal', 'Espécie', 'Porte', 'Nascimento', 'Situação', 'Interesses', 'Prioridade']}>
-                {priorities.map((row) => (
+                {rows.map((row) => (
                   <tr key={row.animalId} className={tableRowClass}>
                     <Cell mono>#{row.animalId}</Cell>
                     <Cell highlight>{row.animalName}</Cell>
@@ -488,8 +455,8 @@ export function AdvancedReportsPage({
                   </tr>
                 ))}
               </ReportTable>
-            )
-          )}
+            )}
+          </ReportRows>
         </Panel>
       )}
 
@@ -498,35 +465,33 @@ export function AdvancedReportsPage({
           title="12 · Índice de compatibilidade por usuário"
           detail="Pontuação de 0 a 100 calculada pela função fn_pontuacao_compatibilidade conforme as preferências cadastradas"
         >
-          <form onSubmit={(event) => void searchCompatibility(event)} className="flex flex-wrap items-end gap-3 border-b border-[#29465b] p-4">
+          <form onSubmit={searchCompatibility} className="flex flex-wrap items-end gap-3 border-b border-[#29465b] p-4">
             <label className="block w-48 text-xs font-medium text-[#a9c2d2]">ID do usuário
-              <input className={`${fieldClass} mt-1.5`} type="number" min="1" step="1" required value={compatUserId} onChange={(event) => setCompatUserId(event.target.value)} />
+              <input className={`${fieldClass} mt-1.5`} type="number" min="1" step="1" max="2147483647" required value={compatUserId} onChange={(event) => setCompatUserId(event.target.value)} />
             </label>
-            <button type="submit" disabled={compatStatus === 'loading'} className={primaryButtonClass}>Calcular compatibilidade</button>
+            <button type="submit" className={primaryButtonClass}>Calcular compatibilidade</button>
           </form>
-          <div aria-live="polite">
-            {compatStatus === 'loading' && <EmptyState>Calculando compatibilidade...</EmptyState>}
-            {compatStatus === 'error' && <div className="p-4"><ErrorMessage message={`${compatError} Confirme se o script 07_funcoes.sql foi executado.`} /></div>}
-            {compatStatus === 'ready' && (
-              compatibilities.length === 0 ? <EmptyState>Nenhum animal disponível para avaliação.</EmptyState> : (
-                <ReportTable headers={['ID', 'Animal', 'Espécie', 'Raça', 'Porte', 'Sexo', 'Cor', 'Pontuação', 'Prioridade']}>
-                  {compatibilities.map((row) => (
-                    <tr key={row.animalId} className={tableRowClass}>
-                      <Cell mono>#{row.animalId}</Cell>
-                      <Cell highlight>{row.animalName}</Cell>
-                      <Cell>{speciesLabel(row.species)}</Cell>
-                      <Cell>{row.breedName || '—'}</Cell>
-                      <Cell>{row.size ? sizeLabel(row.size) : '—'}</Cell>
-                      <Cell>{row.sex ? sexLabel(row.sex) : '—'}</Cell>
-                      <Cell>{row.color || '—'}</Cell>
-                      <Cell mono highlight>{row.compatibilityScore} pts</Cell>
-                      <Cell>{row.adoptionPriority}</Cell>
-                    </tr>
-                  ))}
-                </ReportTable>
-              )
+          <p className="px-4 pt-3 text-xs text-[#a9c2d2]">Usuário consultado · #{compatibility.userId}</p>
+          <ReportRows reloadRef={reloadRows} {...reportRequest} filters={compatibility} load={loadCompatibility}
+            emptyMessage="Nenhum animal disponível para avaliação.">
+            {(rows) => (
+              <ReportTable headers={['ID', 'Animal', 'Espécie', 'Raça', 'Porte', 'Sexo', 'Cor', 'Pontuação', 'Prioridade']}>
+                {rows.map((row) => (
+                  <tr key={row.animalId} className={tableRowClass}>
+                    <Cell mono>#{row.animalId}</Cell>
+                    <Cell highlight>{row.animalName}</Cell>
+                    <Cell>{speciesLabel(row.species)}</Cell>
+                    <Cell>{row.breedName || '—'}</Cell>
+                    <Cell>{row.size ? sizeLabel(row.size) : '—'}</Cell>
+                    <Cell>{row.sex ? sexLabel(row.sex) : '—'}</Cell>
+                    <Cell>{row.color || '—'}</Cell>
+                    <Cell mono highlight>{row.compatibilityScore} pts</Cell>
+                    <Cell>{row.adoptionPriority}</Cell>
+                  </tr>
+                ))}
+              </ReportTable>
             )}
-          </div>
+          </ReportRows>
         </Panel>
       )}
 
@@ -557,6 +522,7 @@ export function AdvancedReportsPage({
             {!adoptError && !adoptResult && (
               <EmptyState>Selecione um animal disponível e informe o ID do adotante para registrar a adoção.</EmptyState>
             )}
+            {adoptResult && <p className="px-4 py-3 text-sm text-[#c8f0db]">Adoção concluída.</p>}
             {adoptResult && (
               <ReportTable headers={['ID', 'Animal', 'Espécie', 'Centro', 'Situação', 'Descrição atualizada']}>
                 <tr className={tableRowClass}>
@@ -600,6 +566,7 @@ export function AdvancedReportsPage({
             {!redistributeError && !redistributeResult && (
               <EmptyState>Selecione o centro de origem e o limite de ocupação por unidade para iniciar a redistribuição.</EmptyState>
             )}
+            {redistributeResult && <p className="px-4 py-3 text-sm text-[#c8f0db]">Redistribuição concluída.</p>}
             {redistributeResult && (
               <ReportTable headers={['Centro de origem', 'Matriz da rede', 'Limite por unidade', 'Animais transferidos', 'Restantes na origem']}>
                 <tr className={tableRowClass}>
@@ -656,21 +623,17 @@ export function AdvancedReportsPage({
             action={
               <button
                 type="button"
-                onClick={() => void reloadRoutinesAndTriggersData(Number(compatUserId) || 1)}
+                onClick={() => void reloadReportData()}
                 className={secondaryButtonClass}
               >
                 ↻ Atualizar histórico
               </button>
             }
           >
-            {auditStatus === 'loading' && <EmptyState>Carregando histórico de auditoria...</EmptyState>}
-            {auditStatus === 'error' && <div className="p-4"><ErrorMessage message={`${auditError} Confirme se o script 09_triggers.sql foi executado.`} /></div>}
-            {auditStatus === 'ready' && (
-              auditLogs.length === 0 ? (
-                <EmptyState>Nenhum evento de auditoria registrado.</EmptyState>
-              ) : (
+            <ReportRows reloadRef={reloadRows} {...reportRequest} load={loadAuditLogs} emptyMessage="Nenhum evento de auditoria registrado.">
+              {(rows) => (
                 <ReportTable headers={['ID', 'Animal', 'Evento', 'Disponibilidade', 'Centro', 'Detalhes', 'Data']}>
-                  {auditLogs.map((log) => (
+                  {rows.map((log) => (
                     <tr key={log.logId} className={tableRowClass}>
                       <Cell mono>#{log.logId}</Cell>
                       <Cell highlight>{log.animalName} <span className="font-mono text-xs text-[#819caf]">#{log.animalId}</span></Cell>
@@ -682,8 +645,8 @@ export function AdvancedReportsPage({
                     </tr>
                   ))}
                 </ReportTable>
-              )
-            )}
+              )}
+            </ReportRows>
           </Panel>
         </div>
       )}
@@ -695,38 +658,58 @@ function loadRecommendations(filters: { userId: number }, signal: AbortSignal) {
   return api.recommendedAnimals(filters.userId, signal)
 }
 
-function ReportRows<T, Filters>({ filters, catalog, load, emptyMessage, children }: {
+function loadPriorities(_: ReportFilters, signal: AbortSignal) {
+  return api.animalPriorities(signal)
+}
+
+function loadCompatibility(filters: { userId: number }, signal: AbortSignal) {
+  return api.userCompatibility(filters.userId, signal)
+}
+
+function loadAuditLogs(_: ReportFilters, signal: AbortSignal) {
+  return api.auditLogs(signal)
+}
+
+function ReportRows<T, Filters>({ filters, load, reloadRef, onRetry, emptyMessage, children }: {
   filters: Filters
-  catalog?: DashboardData
   load: (filters: Filters, signal: AbortSignal) => Promise<T[]>
+  reloadRef: Ref<() => Promise<void>>
+  onRetry: () => void
   emptyMessage?: string
   children: (rows: T[]) => ReactNode
 }) {
-  const [attempt, setAttempt] = useState(0)
-  const [result, setResult] = useState<{
-    filters: Filters
-    catalog: DashboardData | undefined
-    attempt: number
-    rows?: T[]
-    error?: string
-  }>()
+  const request = useRef<AbortController | null>(null)
+  const [result, setResult] = useState<{ filters: Filters; rows?: T[]; error?: string }>()
 
-  useEffect(() => {
+  const loadRows = useCallback(() => {
+    request.current?.abort()
     const controller = new AbortController()
-    load(filters, controller.signal)
+    request.current = controller
+    const { signal } = controller
+
+    return load(filters, signal)
       .then((rows) => {
-        if (!controller.signal.aborted) setResult({ filters, catalog, attempt, rows })
+        if (!signal.aborted) setResult({ filters, rows })
       })
       .catch((cause: unknown) => {
+        if (signal.aborted) return
         const error = cause instanceof Error ? cause.message : 'Não foi possível carregar esta consulta.'
-        if (!controller.signal.aborted) setResult({ filters, catalog, attempt, error })
+        setResult({ filters, error })
+        throw cause
       })
-    return () => controller.abort()
-  }, [filters, catalog, load, attempt])
+  }, [filters, load])
 
-  const current = result && result.filters === filters && result.catalog === catalog && result.attempt === attempt
-    ? result
-    : undefined
+  useEffect(() => {
+    void loadRows().catch(() => {})
+    return () => request.current?.abort()
+  }, [loadRows])
+
+  useImperativeHandle(reloadRef, () => async () => {
+    setResult(undefined)
+    await loadRows()
+  }, [loadRows])
+
+  const current = result?.filters === filters ? result : undefined
 
   return (
     <div aria-live="polite" aria-busy={!current}>
@@ -734,7 +717,7 @@ function ReportRows<T, Filters>({ filters, catalog, load, emptyMessage, children
       {current?.error && (
         <div className="space-y-3 p-4">
           <ErrorMessage message={current.error} />
-          <button type="button" className={secondaryButtonClass} onClick={() => setAttempt((value) => value + 1)}>
+          <button type="button" className={secondaryButtonClass} onClick={onRetry}>
             Tentar novamente
           </button>
         </div>

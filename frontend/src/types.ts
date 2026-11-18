@@ -87,10 +87,13 @@ export interface AgeGroupSummary {
   total: number
 }
 
-export interface DashboardData {
+export interface CatalogData {
   animals: Animal[]
   breeds: Breed[]
   centers: Center[]
+}
+
+export interface DashboardData extends CatalogData {
   speciesSummary: SpeciesSummary[]
   ageGroupSummary: AgeGroupSummary[]
 }

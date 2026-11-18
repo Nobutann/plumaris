@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from './api'
 import { ErrorMessage, secondaryButtonClass } from './components/ui'
 import { AnimalsPage } from './pages/AnimalsPage'
@@ -7,7 +7,7 @@ import { CentersPage } from './pages/CentersPage'
 import { PreferencesPage } from './pages/PreferencesPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { AdvancedReportsPage } from './pages/AdvancedReportsPage'
-import type { DashboardData, DashboardFilters } from './types'
+import type { CatalogData, DashboardFilters } from './types'
 
 type Page = 'dashboard' | 'animals' | 'breeds' | 'reports' | 'preferences' | 'centers'
 
@@ -34,45 +34,61 @@ function App() {
   const [dashboardFilters, setDashboardFilters] = useState<DashboardFilters | null>(null)
   const [dashboardRefresh, setDashboardRefresh] = useState(0)
   const [catalogRequested, setCatalogRequested] = useState(false)
-  const [data, setData] = useState<DashboardData | null>(null)
+  const [data, setData] = useState<CatalogData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const catalogRequest = useRef<AbortController | null>(null)
+  const refreshReports = useRef<(() => Promise<void>) | null>(null)
 
-  const refresh = useCallback(async () => {
-    const nextData = await api.loadDashboard()
-    setData(nextData)
-    setError('')
+  const refresh = useCallback(() => {
+    catalogRequest.current?.abort()
+    const controller = new AbortController()
+    catalogRequest.current = controller
+    const { signal } = controller
+
+    return Promise.allSettled([api.animals({}, signal), api.listBreeds(signal), api.listCenters(signal)])
+      .then(([animals, breeds, centers]) => {
+        if (signal.aborted) return
+        setLoading(false)
+        if (animals.status === 'fulfilled' && breeds.status === 'fulfilled' && centers.status === 'fulfilled') {
+          setData({ animals: animals.value, breeds: breeds.value, centers: centers.value })
+          setError('')
+          return
+        }
+
+        setData((previous) => previous && ({
+          animals: animals.status === 'fulfilled' ? animals.value : previous.animals,
+          breeds: breeds.status === 'fulfilled' ? breeds.value : previous.breeds,
+          centers: centers.status === 'fulfilled' ? centers.value : previous.centers,
+        }))
+        const failure = [animals, breeds, centers].find((result) => result.status === 'rejected')
+        const cause: unknown = failure?.reason
+        setError(cause instanceof Error ? cause.message : 'Não foi possível carregar os dados.')
+        throw cause
+      })
   }, [])
 
   useEffect(() => {
     if (!catalogRequested) return
 
-    let active = true
-    api.loadDashboard()
-      .then((nextData) => {
-        if (active) setData(nextData)
-      })
-      .catch((cause: unknown) => {
-        if (active) setError(cause instanceof Error ? cause.message : 'Não foi possível carregar os dados.')
-      })
-      .finally(() => {
-        if (active) setLoading(false)
-      })
-    return () => { active = false }
-  }, [catalogRequested])
+    void refresh().catch(() => {})
+    return () => catalogRequest.current?.abort()
+  }, [catalogRequested, refresh])
 
   function refreshDashboard() {
     setDashboardRefresh((version) => version + 1)
   }
 
-  async function retry() {
+  function retry() {
     setLoading(true)
-    try {
-      await refresh()
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Não foi possível carregar os dados.')
-    } finally {
-      setLoading(false)
+    void refresh().catch(() => {})
+  }
+
+  function refreshCurrentPage() {
+    if (page === 'reports' && refreshReports.current) {
+      void refreshReports.current()
+    } else {
+      retry()
     }
   }
 
@@ -133,19 +149,19 @@ function App() {
             {page === 'dashboard' && <button type="button" onClick={refreshDashboard} className={secondaryButtonClass}>
               ↻ Atualizar dados
             </button>}
-            {showsCatalog && <button type="button" onClick={() => void retry()} disabled={loading} className={secondaryButtonClass}>
+            {showsCatalog && <button type="button" onClick={refreshCurrentPage} disabled={loading} className={secondaryButtonClass}>
               {loading ? 'Atualizando...' : '↻ Atualizar dados'}
             </button>}
           </header>
 
           <div className="space-y-5 p-5 sm:p-7">
             {page === 'preferences' && <PreferencesPage />}
-            {showsCatalog && error && <ErrorMessage message={error} />}
+            {showsCatalog && error && (page !== 'reports' || !data) && <ErrorMessage message={error} />}
             {showsCatalog && loading && !data && <div className="border border-[#2b4961] bg-[#112438] p-10 text-center text-sm text-[#9bb5c6]">Carregando dados do banco...</div>}
             {showsCatalog && !loading && !data && (
               <div className="border border-[#2b4961] bg-[#112438] p-8 text-center">
                 <p className="text-sm text-[#b9d0df]">Inicie a API Spring Boot na porta 8080 e tente novamente.</p>
-                <button type="button" onClick={() => void retry()} className="mt-4 text-sm font-semibold text-[#91c9e9] hover:underline">Tentar novamente</button>
+                <button type="button" onClick={retry} className="mt-4 text-sm font-semibold text-[#91c9e9] hover:underline">Tentar novamente</button>
               </div>
             )}
             {page === 'dashboard' && (
@@ -159,7 +175,15 @@ function App() {
             {data && page === 'animals' && <AnimalsPage animals={data.animals} breeds={data.breeds} centers={data.centers} refresh={refresh} />}
             {data && page === 'breeds' && <BreedsPage breeds={data.breeds} refresh={refresh} />}
             {data && page === 'centers' && <CentersPage centers={data.centers} refresh={refresh} />}
-            {data && page === 'reports' && <AdvancedReportsPage data={data} refresh={refresh} />}
+            {data && (
+              <AdvancedReportsPage
+                data={data}
+                visible={page === 'reports'}
+                refreshCatalog={refresh}
+                refreshRef={refreshReports}
+                onOperationCompleted={refreshDashboard}
+              />
+            )}
           </div>
 
           <footer className="mx-5 mt-8 border-t border-[#27445a] py-5 text-xs text-[#6f8da1] sm:mx-7">
