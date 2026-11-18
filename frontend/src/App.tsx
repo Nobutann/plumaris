@@ -109,7 +109,7 @@ function App() {
               <span className="block font-mono text-[11px] font-semibold uppercase tracking-[0.24em] text-[#77b8dd]">Base de dados</span>
               <span className="mt-1 block text-2xl font-semibold tracking-tight text-[#e5f1f8]">adoção<span className="text-[#78b8db]">.</span></span>
             </div>
-            <span className="border border-[#3a5b72] px-2 py-1 font-mono text-[10px] text-[#9bb9cc]">v0.1.0-beta.1</span>
+            <span className="border border-[#3a5b72] px-2 py-1 font-mono text-[10px] text-[#9bb9cc]">v1.0.0</span>
           </div>
 
           <nav aria-label="Navegação principal" className="flex gap-1 overflow-x-auto px-3 py-3 lg:block lg:space-y-1 lg:px-3 lg:py-5">

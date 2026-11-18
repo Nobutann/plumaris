@@ -1,235 +1,202 @@
-# Plumaris - Adoção de Animais
+# Plumaris
 
-Aplicação para consultar cães, gatos e os centros de adoção responsáveis por eles. O backend oferece uma API REST em Java; o frontend é uma aplicação independente em React e TypeScript.
+**v1.0.0 · Primeira versão oficial**
 
-O projeto é executado com **Docker Compose**, que inicia MySQL, backend e frontend. A configuração usa o servidor de desenvolvimento do Vite, com atualização automática da interface ao editar o código.
+O Plumaris reúne os registros de cães e gatos, dos centros que os acolhem e das preferências das pessoas interessadas em adotar. Com esses dados, é possível consultar animais disponíveis, encontrar candidatos que atendam às preferências de um usuário e acompanhar a oferta e os interesses em adoção.
 
-> **Estado:** primeira versão beta (`v0.1.0-beta.1`). O backend possui as quatro consultas originais, quatro consultas avançadas, duas visões gerenciais, duas funções SQL, dois procedimentos armazenados, dois triggers com tabela de auditoria e operações de cadastro, alteração e exclusão de animais, raças e preferências. O frontend oferece painel com gráficos, manutenção de animais, raças e preferências e visualização ou execução de todos esses recursos.
+O backend é uma API REST em Java 21 com Spring Boot 4.1.1. Ele acessa o MySQL 8.4.13 com SQL explícito e JDBC direto (MySQL Connector/J), sem ORM. A interface usa React, TypeScript, Vite e Tailwind CSS. O projeto usa Maven no backend e npm no frontend.
 
-## Estrutura
+## Executar localmente
 
-```text
-compose.yaml        Serviços, portas e volumes do Docker Compose
-backend/            API Spring Boot e Dockerfile Java
-database/           Tabelas, dados iniciais, consultas e rotinas SQL
-database/exemplos/  Demonstrações manuais dos procedimentos e triggers
-frontend/           Interface React e TypeScript e Dockerfile Node
+Tenha Git, Docker em execução com [Docker Compose](https://docs.docker.com/compose/install/), acesso à internet para baixar imagens e dependências e as portas locais `5173`, `8080` e `3307` livres. Os containers fornecem Java, Maven via Wrapper, Node.js 24, npm e MySQL.
+
+```bash
+git clone --branch v1.0.0 https://github.com/Nobutann/plumaris.git
+cd plumaris
 ```
 
-O backend usa Java 21, Spring Boot 4.1.1, Maven e JDBC direto com o driver do MySQL, sem ORM. As consultas e operações de escrita usam SQL explícito. O frontend usa React, TypeScript, Vite e Tailwind CSS e consome a API em JSON.
-
-## Requisitos
-
-- Docker em execução, com suporte ao comando `docker compose`. Consulte a [instalação do Docker Compose](https://docs.docker.com/compose/install/).
-- Portas locais `5173`, `8080` e `3307` disponíveis.
-- Acesso à internet para baixar imagens e dependências na primeira construção e nas atualizações.
-
-Java 21, Maven, Node.js 24, npm e MySQL 8.4.13 são fornecidos pelos containers. A construção do backend utiliza o Maven Wrapper incluído no projeto.
-
-## Executar o projeto
-
-Abra um terminal na raiz do repositório, onde está o arquivo `compose.yaml`. Os comandos Docker Compose deste README devem ser executados nessa pasta.
-
-### Configuração inicial
-
-Crie um arquivo chamado `.env` na raiz do projeto, ao lado de `compose.yaml`, com este conteúdo. Substitua os valores de exemplo pelas senhas que serão usadas na sua máquina:
+Na raiz, ao lado de [compose.yaml](compose.yaml), crie um arquivo `.env` com duas senhas. Use valores próprios no lugar dos exemplos. O Git ignora esse arquivo.
 
 ```dotenv
-MYSQL_ROOT_PASSWORD=troque_por_uma_senha_root
-MYSQL_PASSWORD=troque_por_uma_senha_plumaris
+MYSQL_ROOT_PASSWORD=exemplo-raiz-plumaris-2026
+MYSQL_PASSWORD=exemplo-aplicacao-plumaris-2026
 ```
 
-`MYSQL_ROOT_PASSWORD` define a senha administrativa do MySQL. `MYSQL_PASSWORD` define a senha do usuário `plumaris`, utilizado pela aplicação e pelo acesso ao banco. O `.env` é ignorado pelo Git e deve ser criado em cada máquina.
-
-Inicie os três serviços:
+`MYSQL_ROOT_PASSWORD` é a senha administrativa do MySQL. `MYSQL_PASSWORD` é a senha do usuário `plumaris`, que o backend usa para acessar o banco `adocao_bd`.
 
 ```bash
 docker compose up --build -d
+docker compose ps
 ```
 
-Na primeira execução, o Docker baixa as imagens, compila o backend e instala as dependências do frontend. O MySQL prepara o banco automaticamente; o backend aguarda a verificação de saúde do banco antes de iniciar.
+O backend aguarda a verificação de saúde do MySQL e executa o JAR compilado. O frontend usa o servidor de desenvolvimento do Vite, com atualização automática ao editar os arquivos locais. O Vite encaminha `/api` para `http://backend:8080`. O backend acessa o MySQL em `mysql:3306` pela rede do Compose.
 
-Depois da inicialização, acesse:
-
-| Serviço | Endereço no computador |
+| Serviço | Acesso pelo computador |
 | --- | --- |
 | Interface | [http://localhost:5173](http://localhost:5173) |
-| API: lista de animais | [http://localhost:8080/api/animais](http://localhost:8080/api/animais) |
-| MySQL | `127.0.0.1:3307` |
+| API | [http://localhost:8080/api/animais](http://localhost:8080/api/animais) |
+| MySQL | `127.0.0.1:3307`, banco `adocao_bd`, usuário `plumaris` |
 
-### Iniciar, acompanhar e encerrar
+Execute os comandos do Compose na raiz do repositório.
 
 | Ação | Comando |
 | --- | --- |
-| Iniciar novamente com as imagens existentes | `docker compose up -d` |
-| Construir as imagens e iniciar | `docker compose up --build -d` |
-| Conferir os serviços e as portas | `docker compose ps` |
-| Acompanhar os logs dos serviços | `docker compose logs -f` |
-| Consultar os logs do backend | `docker compose logs backend` |
-| Consultar os logs do frontend | `docker compose logs frontend` |
-| Consultar os logs do banco | `docker compose logs mysql` |
-| Encerrar o projeto, preservando os volumes | `docker compose down` |
+| Iniciar com as imagens existentes | `docker compose up -d` |
+| Acompanhar logs | `docker compose logs -f` |
+| Consultar os logs de um serviço | `docker compose logs backend` (ou `frontend` ou `mysql`) |
+| Reconstruir o backend após editar código Java | `docker compose up --build -d backend` |
+| Encerrar e manter os volumes | `docker compose down` |
 
-Pressione `Ctrl+C` para sair do acompanhamento dos logs; os serviços iniciados com `-d` continuam em execução.
+## Banco de dados e persistência
 
-Os dados do banco ficam no volume `mysql_data`, e as dependências do frontend no volume `frontend_node_modules`. **A opção `-v` em `docker compose down` remove esses volumes, incluindo os dados do banco.** Para encerrar o trabalho e continuar depois, use `docker compose down` sem essa opção.
+O volume `mysql_data` guarda os dados do MySQL. O volume `frontend_node_modules` guarda as dependências do frontend no container. A opção `-v` em `docker compose down` exclui os dois volumes, incluindo os dados do banco.
 
-## Banco de dados
+Na primeira inicialização com o diretório de dados vazio, o MySQL cria o banco e o usuário da aplicação, depois executa, nesta ordem, os arquivos montados em `/docker-entrypoint-initdb.d/`.
 
-### Carga automática
+| Ordem | Arquivo | Conteúdo |
+| --- | --- | --- |
+| 1 | [01_criacao_tabelas.sql](database/01_criacao_tabelas.sql) | Tabelas e restrições |
+| 2 | [02_insercao_dados.sql](database/02_insercao_dados.sql) | Carga inicial, com 30 animais |
+| 3 | [04_indices.sql](database/04_indices.sql) | Índices de apoio às consultas |
+| 4 | [05_visoes.sql](database/05_visoes.sql) | Visões gerenciais |
+| 5 | [07_funcoes.sql](database/07_funcoes.sql) | Funções de prioridade e compatibilidade |
+| 6 | [08_procedimentos.sql](database/08_procedimentos.sql) | Procedimentos de adoção e redistribuição |
+| 7 | [09_triggers.sql](database/09_triggers.sql) | Tabela de auditoria e triggers |
 
-Na primeira inicialização de um volume de dados novo, o MySQL cria `adocao_bd`, cria o usuário `plumaris` e executa estes scripts em ordem:
+O script combinado [01_criacao_e_insercao.sql](database/01_criacao_e_insercao.sql) fica fora da carga automática. Os arquivos [03_consultas.sql](database/03_consultas.sql), [06_consultas_avancadas.sql](database/06_consultas_avancadas.sql) e os [exemplos de rotinas](database/exemplos/) são para execução manual. Reiniciar com um volume já inicializado mantém o banco como está. O MySQL só aplica automaticamente as alterações nos scripts e nas senhas do `.env` quando inicializa um volume novo. Em um banco existente, aplique as alterações necessárias diretamente no MySQL.
 
-1. `database/01_criacao_tabelas.sql`
-2. `database/02_insercao_dados.sql`
-3. `database/04_indices.sql`
-4. `database/05_visoes.sql`
-5. `database/07_funcoes.sql`
-6. `database/08_procedimentos.sql`
-7. `database/09_triggers.sql`
-
-O Compose monta esses arquivos individualmente, como somente leitura, em `/docker-entrypoint-initdb.d/`. O script combinado `database/01_criacao_e_insercao.sql` fica fora dessa carga para evitar repetir a criação e a inserção.
-
-A carga inicial contém 30 animais. Para conferir pelo terminal, abra o cliente MySQL do container e informe a senha de `MYSQL_PASSWORD`:
+Para abrir o cliente do container, execute o comando abaixo e informe a senha de `MYSQL_PASSWORD`. Para usar o MySQL Workbench, configure uma conexão TCP/IP com os dados da tabela de acesso.
 
 ```bash
 docker compose exec mysql mysql -u plumaris -p adocao_bd
 ```
 
-No cliente SQL, execute:
+## Usar a interface
 
-```sql
-SELECT COUNT(*) AS total_animais FROM Animal;
-```
+- **Animais** permite listar, cadastrar, editar e excluir animais. Cada animal pertence a um centro. Se informar uma raça, escolha uma da mesma espécie.
+- **Raças** permite listar, cadastrar, editar e excluir raças por espécie. Ao excluir uma raça, os animais e preferências vinculados ficam sem raça.
+- **Preferências** permite listar, cadastrar, editar e excluir os critérios de adoção. Cada usuário pode ter uma preferência. Deixe um critério em branco para manter a busca aberta a qualquer valor desse campo.
+- **Centros** permite listar, cadastrar, editar e excluir centros. O cadastro cria a conta vinculada, com senha exigida na criação. A exclusão é bloqueada quando o centro tem animais ou vínculos com outros centros.
+- **Consultas** reúne quatro consultas básicas, quatro avançadas, duas visões, duas funções, dois procedimentos e a área de interesses e auditoria. Escolha um relatório, preencha os filtros disponíveis e clique em **Aplicar filtros**. **Limpar filtros** remove o recorte. Em **Recomendações** e **Índice de compatibilidade por usuário**, informe o ID do usuário.
+- **Painel** apresenta indicadores e gráficos. Use **Aplicar filtros** para consultar o recorte, **Limpar filtros** para voltar aos dados completos e **Atualizar dados** para consultar novamente com os filtros aplicados.
 
-Os scripts de inicialização são executados apenas quando o diretório de dados está vazio. Alterar um arquivo SQL ou reiniciar os containers não reaplica a carga ao volume existente. Para atualizar o banco atual, execute o SQL da alteração pelo cliente ou pelo Workbench, mantendo o script correspondente atualizado para novas instalações. Da mesma forma, alterar as senhas no `.env` não troca as senhas de usuários de um banco já inicializado.
+### Demonstrar as rotinas
 
-As consultas `database/03_consultas.sql` e `database/06_consultas_avancadas.sql` estão disponíveis para execução manual. As demonstrações dos procedimentos e triggers estão em `database/exemplos/`; elas executam operações de teste e ficam fora da carga automática. Selecione `adocao_bd` antes de executá-las.
+Use uma base de demonstração. As operações de escrita nos exemplos e na interface alteram registros e podem deixar entradas de auditoria.
 
-Cada máquina mantém seu próprio volume de dados. Para transportar os registros atuais entre máquinas, exporte e importe um backup; os scripts fornecem o estado inicial.
+1. Em **Consultas → Registro de interesse**, informe um usuário existente e um animal disponível para o qual ele ainda não tenha interesse registrado. Em uma carga inicial, o usuário `1` e o animal indisponível `7` permitem conferir o bloqueio do trigger.
+2. Em **Conclusão de adoção**, informe um animal disponível e o usuário adotante. O procedimento registra ou atualiza o interesse do adotante e marca o animal como indisponível. Confira o resultado em **Animais** e o evento no **Histórico de auditoria de animais**.
+3. Em **Redistribuição de animais na rede**, informe o centro de origem e o limite de animais disponíveis por unidade de destino. Em uma carga inicial, use o centro `32` e o limite `1`. Confira os destinos retornados e os eventos de mudança de centro no histórico.
 
-### Acessar pelo Workbench
+Para demonstrar direto no MySQL, selecione `adocao_bd` no cliente e execute os trechos de [procedimentos](database/exemplos/08_procedimentos.sql) ou de [triggers](database/exemplos/09_triggers.sql). Os exemplos usam IDs da carga inicial. Execute-os sobre uma carga de demonstração em que esses registros ainda tenham os estados esperados.
 
-Com o serviço `mysql` em execução, crie uma conexão TCP/IP:
+## Painel estatístico
 
-| Campo | Valor |
+| Gráfico | O que mostra |
 | --- | --- |
-| Nome da conexão | `Plumaris Docker` |
-| Host | `127.0.0.1` |
-| Porta | `3307` |
-| Usuário | `plumaris` |
-| Senha | Valor de `MYSQL_PASSWORD` no `.env` |
-| Schema padrão | `adocao_bd` |
+| Animais por espécie | Barras com disponíveis e indisponíveis por espécie |
+| Faixas etárias | Barras para 0–1, 2–4, 5 ou mais anos e idade desconhecida |
+| Animais por centro | Barras com disponíveis e indisponíveis por centro |
+| Oferta e demanda por raça | Barras agrupadas de animais disponíveis e preferências explícitas pela raça |
+| Interesses por mês | Série em ordem cronológica dos meses com registros, detalhada em **Valores por mês** |
+| Boxplot de idades por espécie | Mínimo, primeiro quartil, mediana, terceiro quartil e máximo |
 
-A porta `3307` é a entrada pelo computador. Dentro da rede do Compose, o backend acessa o banco em `mysql:3306`.
+Os indicadores incluem total de animais, disponíveis, indisponíveis, percentual disponível, centros com animais no recorte, total global de centros cadastrados e total de interesses. O percentual fica sem valor quando o recorte está vazio.
 
-## Configuração e API do backend
+- **Espécie, centro e disponibilidade** filtram os animais. Para contar interesses, o painel considera os atributos atuais dos animais vinculados.
+- **Data inicial e data final** afetam apenas o total e a série mensal de interesses. Os dias informados são inclusivos e cada limite pode ser usado sozinho.
+- **Centros cadastrados** é um total global. No gráfico por raça, a oferta conta os animais disponíveis no recorte e a demanda conta todas as preferências com vínculo explícito à raça. O filtro de espécie seleciona as raças exibidas, incluindo as que têm oferta e demanda iguais a zero.
 
-O Compose fornece `DB_URL=jdbc:mysql://mysql:3306/adocao_bd`, `DB_USERNAME=plumaris` e `DB_PASSWORD` com o valor de `MYSQL_PASSWORD`. Essas variáveis são consumidas por `backend/src/main/resources/application.yaml`.
+O painel calcula a idade em anos completos na data de referência do MySQL e informa quantas idades são válidas ou foram excluídas. Nascimentos ausentes ou futuros entram na faixa desconhecida (`Unknown` na API). Média, mediana, moda, variância populacional e desvio padrão populacional usam apenas idades válidas. Todas as modas empatadas são exibidas se houver repetição. Os quartis usam interpolação linear. Com uma única idade, os quartis coincidem e a dispersão é zero. Sem idades válidas, as medidas numéricas ficam sem valor.
 
-O frontend recebe `API_PROXY_TARGET=http://backend:8080`, utilizado pelo Vite para encaminhar as chamadas `/api` ao backend. O navegador acessa a interface pela porta `5173`.
+## Referência da API
 
-As rotas de consulta de animais são:
+A API usa JSON com nomes de campos em inglês. A base para chamadas diretas é `http://localhost:8080`.
 
-- `GET /api/animais`: lista os animais com os nomes do centro de adoção e da raça.
-- `GET /api/animais/resumo-por-especie`: retorna os totais de animais disponíveis e indisponíveis por espécie.
-- `GET /api/animais/faixas-etarias`: retorna a quantidade de animais por espécie e faixa etária, incluindo a faixa `Unknown` para datas de nascimento ausentes ou futuras.
-- `GET /api/animais/recomendados?userId=1`: lista animais disponíveis que atendem aos filtros cadastrados nas preferências do usuário. Retorna uma lista vazia quando não há preferências ou correspondências.
+### Cadastros
 
-Os campos das respostas JSON usam nomes em inglês. O SQL está explícito no repositório JDBC; as quatro consultas estão reunidas em `database/03_consultas.sql`. Para executar a quarta no Workbench com outro usuário, altere o valor de `@user_id` no arquivo.
+Cada rota base aceita `GET` para listar e `POST` para cadastrar. Acrescente `/{id}` para consultar (`GET`), editar (`PUT`) ou excluir (`DELETE`) um registro.
 
-Os relatórios da Etapa 04 e as rotinas de banco (funções, procedimentos e triggers) estão disponíveis nestas rotas:
-
-- `GET /api/relatorios/centros-sem-animais-disponiveis`: anti join de centros sem oferta ativa.
-- `GET /api/relatorios/cobertura-racas-animais`: full outer join emulado entre raças e animais.
-- `GET /api/relatorios/preferencias-nao-atendidas`: subconsulta com `NOT EXISTS`.
-- `GET /api/relatorios/animais-acima-media-idade`: subconsulta correlacionada por espécie.
-- `GET /api/relatorios/painel-centros`: dados da visão operacional dos centros.
-- `GET /api/relatorios/oferta-demanda-racas`: dados da visão de oferta e demanda por raça.
-- `GET /api/relatorios/prioridade-adocao`: classificação de prioridade de adoção calculada pela função `fn_classificar_prioridade_adocao`.
-- `GET /api/relatorios/compatibilidade-usuario?userId=1`: pontuação de compatibilidade (0 a 100) calculada pela função `fn_pontuacao_compatibilidade`.
-- `POST /api/relatorios/procedimentos/concluir-adocao`: executa o procedimento `sp_concluir_adocao_animal` para registrar a adoção e atualizar os dados do animal.
-- `POST /api/relatorios/procedimentos/redistribuir-animais`: executa o procedimento `sp_redistribuir_animais_rede` (com uso de `CURSOR`) para redistribuir animais disponíveis entre unidades da mesma rede respeitando o limite por unidade.
-- `GET /api/relatorios/logs-auditoria`: lista o histórico gravado na tabela `Log_Auditoria_Animal` pelo trigger `trg_animal_after_update_log`.
-- `POST /api/relatorios/interesses`: registra interesse de um usuário em um animal, validado pelo trigger `trg_interesse_before_insert_validar`.
-
-A seção **Centros** gerencia os centros de adoção. `GET /api/centros` lista os centros (incluindo `id` e `name` para o seletor de Animais) e `GET /api/centros/{id}` consulta um centro. `POST /api/centros` recebe, no mínimo, `name`, `email` e `password` (8 a 128 caracteres); `PUT /api/centros/{id}` atualiza os dados sem aceitar senha. Ambas as operações aceitam `description`, `street`, `number`, `neighborhood`, `city`, `state` e `postalCode` como campos opcionais.
-
-O cadastro cria o centro e sua conta na mesma transação; o identificador do centro é o da conta. O e-mail editado é o da conta vinculada, e a senha é armazenada apenas como hash com sal, sem ser retornada pela API. `DELETE /api/centros/{id}` é bloqueado se houver animais ou vínculos com outros centros. A exclusão remove os meios de contato do centro e preserva a conta quando ela também pertence a um usuário.
-
-Para gerenciar animais, a API oferece também `GET /api/animais/{id}`, `POST /api/animais`, `PUT /api/animais/{id}` e `DELETE /api/animais/{id}`. Um corpo mínimo para criação ou alteração é `{"name":"Fido","species":"Cao","available":true,"centerId":32}`. O centro deve existir; `breedId` é opcional e, quando informado, precisa pertencer à mesma espécie. A exclusão de um animal também exclui suas fotos e registros de interesse, conforme as chaves estrangeiras do banco.
-
-Para gerenciar raças, a API oferece `GET /api/racas`, `GET /api/racas/{id}`, `POST /api/racas`, `PUT /api/racas/{id}` e `DELETE /api/racas/{id}`. As requisições de criação e alteração recebem JSON como `{"name":"Corgi","species":"Cao"}`. Os valores aceitos para `species` são `Cao` e `Gato`. Ao excluir uma raça usada por animais ou preferências, os registros permanecem com `idRaca` nulo, conforme as chaves estrangeiras do banco.
-
-A seção **Preferências** usa as seguintes rotas:
-
-- `GET /api/preferencias` e `GET /api/preferencias/{id}` retornam os critérios com o nome do usuário e da raça.
-- `POST /api/preferencias` cadastra uma preferência. `PUT /api/preferencias/{id}` substitui os critérios e `DELETE /api/preferencias/{id}` exclui o registro.
-- `GET /api/usuarios` fornece apenas `id` e `name` para o seletor.
-
-Cada usuário pode ter uma preferência. Para criar ou editar, informe `userId` e, opcionalmente, `desiredSpecies`, `desiredSize`, `minimumAge`, `maximumAge`, `desiredSex`, `desiredColor` e `breedId`. Use `null` ou omita um critério para deixá-lo sem restrição. As idades são em anos completos.
-
-### Filtros da seção Consultas
-
-Cada relatório tem seu próprio recorte. **Aplicar filtros** consulta a API com os valores do formulário, e **Limpar filtros** volta à lista completa. O formulário mostra os filtros aplicados à consulta.
-
-| Rotas GET | Parâmetros opcionais |
+| Rota base | Campos para cadastro e edição |
 | --- | --- |
-| `/api/animais`, `/api/animais/resumo-por-especie`, `/api/animais/faixas-etarias` | `species`, `centerId`, `available`. Nos resumos, filtram os animais antes do agrupamento. |
-| `/api/relatorios/centros-sem-animais-disponiveis` | `city`, `state`. Selecionam centros da região que não têm animais disponíveis. |
-| `/api/relatorios/cobertura-racas-animais` | `species`, `matchStatus` (`Raca com animal`, `Raca sem animal`, `Animal sem raca`). Vale a espécie da raça quando há raça, e a do animal nos demais casos. |
-| `/api/relatorios/preferencias-nao-atendidas` | `userId`, `desiredSpecies`, `breedId`. Selecionam preferências exibidas. A procura por animais compatíveis continua global. |
-| `/api/relatorios/animais-acima-media-idade` | `species`, `centerId`. A média continua sendo a dos animais disponíveis da espécie em todos os centros, com nascimento válido. |
-| `/api/relatorios/painel-centros` | `centerId`, `city`, `state`. Selecionam linhas da visão operacional com seus totais. |
-| `/api/relatorios/oferta-demanda-racas` | `species`, `breedId`, `supplyStatus` (`Deficit de oferta`, `Superavit de oferta`, `Oferta equilibrada`). Selecionam linhas da visão com seus totais. |
+| `/api/animais` | Obrigatórios: `name`, `species`, `available`, `centerId`. Opcionais: `breedId`, `birthDate`, `sex`, `size`, `color`, `description`. |
+| `/api/racas` | Obrigatórios: `name`, `species`. |
+| `/api/preferencias` | Obrigatório: `userId`. Opcionais: `desiredSpecies`, `desiredSize`, `minimumAge`, `maximumAge`, `desiredSex`, `desiredColor`, `breedId`. As idades são em anos completos. |
+| `/api/centros` | Obrigatórios: `name`, `email` e, apenas no `POST`, `password` (8 a 128 caracteres). Opcionais: `description`, `street`, `number`, `neighborhood`, `city`, `state`, `postalCode` (oito dígitos). |
 
-Espécies aceitas são `Cao` e `Gato`, IDs devem ser inteiros positivos e `available` aceita `true` ou `false`. Cidade usa igualdade após normalizar espaços, e UF aceita os códigos brasileiros em maiúsculas ou minúsculas. Um parâmetro omitido deixa o respectivo campo sem restrição. Valores inválidos retornam `400` com `detail`. Uma busca válida sem correspondências retorna `200` com `[]`.
+`GET /api/usuarios` lista os IDs e nomes dos usuários existentes. Use `Cao` ou `Gato` para espécie, `Macho` ou `Femea` para sexo, e `Pequeno`, `Medio` ou `Grande` para porte.
 
-Exemplos de recortes na API
+### Consultas, visões e painel
 
-- `GET /api/animais/resumo-por-especie?species=Cao&centerId=32&available=false`
-- `GET /api/relatorios/centros-sem-animais-disponiveis?city=S%C3%A3o%20Paulo&state=sp`
-- `GET /api/relatorios/oferta-demanda-racas?species=Gato&supplyStatus=Deficit%20de%20oferta`
+Os filtros são opcionais, exceto `userId` em recomendações. IDs usados como filtros são inteiros positivos, e `available` aceita `true` ou `false`. Nos relatórios regionais, `city` faz comparação por igualdade após normalizar espaços e `state` aceita a sigla brasileira em maiúsculas ou minúsculas.
 
-### Estatísticas do dashboard
+| Rota GET | Parâmetros e efeito |
+| --- | --- |
+| `/api/animais` | `species`, `centerId`, `available` filtram os animais listados com centro e raça. |
+| `/api/animais/resumo-por-especie` | `species`, `centerId`, `available` filtram os animais antes dos totais por espécie e disponibilidade. |
+| `/api/animais/faixas-etarias` | `species`, `centerId`, `available` filtram os animais antes dos totais por faixa etária e espécie. |
+| `/api/animais/recomendados` | `userId` identifica o usuário. Retorna animais disponíveis que atendem às suas preferências cadastradas. |
+| `/api/relatorios/centros-sem-animais-disponiveis` | `city`, `state` selecionam centros da região sem oferta ativa. |
+| `/api/relatorios/cobertura-racas-animais` | `species`, `matchStatus` filtram as correspondências. Usa a espécie da raça quando há vínculo e a do animal nos demais casos. |
+| `/api/relatorios/preferencias-nao-atendidas` | `userId`, `desiredSpecies`, `breedId` filtram as preferências exibidas. A busca por animais compatíveis é global. |
+| `/api/relatorios/animais-acima-media-idade` | `species`, `centerId` filtram os resultados. A média de referência usa os animais disponíveis da espécie com nascimento válido em todos os centros. |
+| `/api/relatorios/painel-centros` | `centerId`, `city`, `state` selecionam linhas prontas da visão `vw_painel_operacional_centros`. |
+| `/api/relatorios/oferta-demanda-racas` | `species`, `breedId`, `supplyStatus` selecionam linhas prontas da visão `vw_oferta_demanda_por_raca`. |
+| `/api/dashboard/estatisticas` | `species`, `centerId`, `available`, `startDate`, `endDate`. As datas usam `YYYY-MM-DD`. Retorna data de referência, filtros aplicados, indicadores, medidas de idade e séries. |
 
-Abra **Painel** e selecione espécie, centro e disponibilidade para recortar os animais. Use as datas inicial e final para restringir os interesses. **Aplicar filtros** consulta a API, **Limpar filtros** restaura a visão completa e **Atualizar dados** repete a consulta com os filtros aplicados. O painel informa o recorte e a data de referência usados pela API.
+`matchStatus` aceita `Raca com animal`, `Raca sem animal` ou `Animal sem raca`. `supplyStatus` aceita `Deficit de oferta`, `Superavit de oferta` ou `Oferta equilibrada`. Codifique os espaços como `%20` ao montar URLs.
 
-Além dos indicadores e das medidas de idade, o painel mostra barras por espécie, faixa etária e centro, barras agrupadas de oferta e demanda por raça, uma linha de interesses mensais e boxplots por espécie. Os valores aparecem junto aos gráficos ou em **Valores por mês**. O total de centros cadastrados e as preferências explícitas por raça são identificados como globais.
-
-`GET /api/dashboard/estatisticas` retorna `referenceDate` (data do MySQL), `filters` (valores aplicados, ou `null` quando omitidos), `indicators`, `ageStatistics` e `series`. Exemplo: `/api/dashboard/estatisticas?species=Cao&centerId=32&available=true&startDate=2026-01-01&endDate=2026-03-31`. Todos os filtros são opcionais; `species` aceita `Cao` ou `Gato`, `centerId` deve ser um inteiro positivo e `available` aceita `true` ou `false`. As datas usam `YYYY-MM-DD`; cada limite funciona sozinho. Filtros inválidos retornam `400` com `detail`; sem correspondências, a rota retorna `200`.
-
-- `indicators` inclui totais do estoque, disponíveis e indisponíveis, percentual disponível (0–100, `null` sem animais), centros com animais, `globalRegisteredCenters` (todos os centros cadastrados, sem filtros) e total de interesses.
-- Espécie, centro e disponibilidade recortam o estoque e selecionam os animais pelos seus atributos **atuais** para contar interesses. O período inclui o dia inicial e o dia final inteiros e afeta **apenas** o total e a série mensal de interesses.
-- `series` contém `animalsBySpecies`, `ageGroups` (`0-1`, `2-4`, `5+`, `Unknown`), `animalsByCenter`, `supplyDemandByBreed`, `interestsByMonth` (meses com registros, `YYYY-MM`, em ordem cronológica) e `ageBoxplotBySpecies`.
-- Em `supplyDemandByBreed`, `availableSupply` conta apenas os disponíveis no recorte. `globalExplicitBreedPreferences` conta preferências com vínculo explícito à raça, independentemente de centro, disponibilidade ou período. O filtro de espécie limita quais raças são exibidas; todas as raças dessa espécie (ou do catálogo inteiro, se omitida) aparecem mesmo com oferta e demanda zero.
-- `ageStatistics` conta idades válidas e excluídas, usando anos completos na `referenceDate`. Nascimento ausente ou futuro entra em `Unknown` e não nas medidas. Média, mediana, variância e desvio padrão populacionais usam apenas idades válidas; todas as modas empatadas são retornadas em ordem crescente, ou `[]` se não houver repetição. Os quartis do boxplot interpolam linearmente na posição `(n−1)×p` (`p` = 0,25, 0,50 e 0,75). Com uma idade, os quartis coincidem e a dispersão é zero; sem idades válidas, as medidas numéricas são `null`.
-
-Para incluir os testes JDBC ao rodar `sh ./mvnw test` em `backend`, defina `PLUMARIS_TEST_MYSQL_URL` (por exemplo, `jdbc:mysql://127.0.0.1:3308`), `PLUMARIS_TEST_MYSQL_USER` e `PLUMARIS_TEST_MYSQL_PASSWORD`. Aponte para uma instância MySQL isolada; os testes criam e removem apenas seu próprio banco descartável.
-
-## Desenvolvimento
-
-O painel mostra gráficos de espécie, disponibilidade e faixas etárias calculados a partir das consultas SQL. As seções **Animais**, **Raças** e **Preferências** permitem cadastro, edição e exclusão; **Consultas** apresenta quinze painéis: as quatro consultas originais, as quatro consultas avançadas, as duas visões gerenciais, as duas funções SQL, os dois procedimentos armazenados e a gestão de interesses e histórico de auditoria dos triggers.
-
-### Alterar o backend
-
-Edite os arquivos de `backend/` no seu editor e reconstrua o serviço:
+Consulte o painel para cães do centro 32 e restrinja os interesses a setembro de 2026.
 
 ```bash
-docker compose up --build -d backend
+curl 'http://localhost:8080/api/dashboard/estatisticas?species=Cao&centerId=32&startDate=2026-09-01&endDate=2026-09-30'
 ```
 
-O backend executa o `.jar` compilado; as mudanças em Java entram em funcionamento após a reconstrução. O Dockerfile usa Java 21 e executa `mvnw package`, incluindo os testes, antes de copiar o `.jar` para a imagem de execução. O volume do MySQL é preservado durante a atualização do backend.
+### Funções, procedimentos, interesses e auditoria
 
-## Contribuição
+Envie os campos das rotas `POST` no corpo JSON.
 
-Mantenha as mudanças pequenas e descreva como foram verificadas. As mensagens de commit seguem [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) e são escritas em inglês, por exemplo:
+| Método e rota | Parâmetros e efeito |
+| --- | --- |
+| `GET /api/relatorios/prioridade-adocao` | Aplica `fn_classificar_prioridade_adocao` para classificar a prioridade de adoção, incluindo a situação dos animais indisponíveis. |
+| `GET /api/relatorios/compatibilidade-usuario` | `userId` obrigatório na URL. Usa `fn_pontuacao_compatibilidade` para pontuar a compatibilidade de 0 a 100. |
+| `POST /api/relatorios/procedimentos/concluir-adocao` | `animalId`, `userId`. Executa `sp_concluir_adocao_animal`. |
+| `POST /api/relatorios/procedimentos/redistribuir-animais` | `sourceCenterId`, `maxPerUnit`. Executa `sp_redistribuir_animais_rede`, que usa um cursor e respeita o limite de animais disponíveis por unidade de destino. |
+| `POST /api/relatorios/interesses` | `userId`, `animalId`. O trigger `trg_interesse_before_insert_validar` impede inserir interesse por animal indisponível ou com data futura. |
+| `GET /api/relatorios/logs-auditoria` | Lista eventos de mudança de disponibilidade ou de centro que o trigger `trg_animal_after_update_log` grava em `Log_Auditoria_Animal`. |
 
-```text
-feat(api): add animal listing
-docs: document local setup
+## Build, lint e testes
+
+Para executar os comandos fora do Docker, use Node.js 24 com npm e Java 21. Rode cada bloco na pasta indicada.
+
+Em [frontend/](frontend/), instale as dependências do lockfile, gere o build e rode o lint.
+
+```bash
+npm ci
+npm run build
+npm run lint
 ```
 
-## Licença
+Em [backend/](backend/), use o Maven Wrapper.
 
-O projeto é distribuído sob a licença MIT. Consulte o arquivo [LICENSE](LICENSE).
+```bash
+sh ./mvnw test
+sh ./mvnw package
+```
+
+A fase `package` também executa a fase de testes e gera `target/adocao-1.0.0.jar`. O [Dockerfile do backend](backend/Dockerfile) executa `sh mvnw -B -ntp package` e copia o JAR para a imagem de execução.
+
+Na execução padrão rodam os testes de contexto do Spring, cálculo de distribuição etária e controladores HTTP com repositórios simulados. As suítes JDBC de painel e filtros de relatórios só rodam quando `PLUMARIS_TEST_MYSQL_URL` aponta para um servidor MySQL no formato exigido, sem nome de banco nem parâmetros. A construção Docker padrão deixa essas suítes ignoradas.
+
+Para habilitar os testes JDBC, use uma instância MySQL isolada. As credenciais precisam permitir a criação e a remoção dos bancos temporários das suítes e a instalação dos objetos SQL usados pelos testes. Em `backend/`, configure as variáveis com o endereço e as credenciais dessa instância, como neste exemplo.
+
+```bash
+export PLUMARIS_TEST_MYSQL_URL='jdbc:mysql://127.0.0.1:3308'
+export PLUMARIS_TEST_MYSQL_USER='root'
+export PLUMARIS_TEST_MYSQL_PASSWORD='exemplo-senha-do-mysql-de-teste'
+sh ./mvnw test
+```
+
+## Contribuição e licença
+
+As mensagens de commit seguem [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/). O Plumaris é distribuído sob a licença MIT. Consulte o arquivo [LICENSE](LICENSE).
