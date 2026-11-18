@@ -2,36 +2,83 @@
 
 Aplicação para consultar cães, gatos e os centros de adoção responsáveis por eles. O backend oferece uma API REST em Java; o frontend é uma aplicação independente em React e TypeScript.
 
+O projeto é executado com **Docker Compose**, que inicia MySQL, backend e frontend. A configuração usa o servidor de desenvolvimento do Vite, com atualização automática da interface ao editar o código.
+
 > **Estado:** primeira versão beta (`v0.1.0-beta.1`). O backend possui as quatro consultas originais, quatro consultas avançadas, duas visões gerenciais, duas funções SQL, dois procedimentos armazenados, dois triggers com tabela de auditoria e operações de cadastro, alteração e exclusão de animais e raças. O frontend oferece painel com gráficos, manutenção de animais e raças e visualização ou execução de todos esses recursos.
 
 ## Estrutura
 
 ```text
-backend/   API Spring Boot
-database/  Tabelas, dados iniciais e consultas SQL
-frontend/  Interface React e TypeScript
+compose.yaml        Serviços, portas e volumes do Docker Compose
+backend/            API Spring Boot e Dockerfile Java
+database/           Tabelas, dados iniciais, consultas e rotinas SQL
+database/exemplos/  Demonstrações manuais dos procedimentos e triggers
+frontend/           Interface React e TypeScript e Dockerfile Node
 ```
 
 O backend usa Java 21, Spring Boot 4.1.1, Maven e JDBC direto com o driver do MySQL, sem ORM. As consultas e operações de escrita usam SQL explícito. O frontend usa React, TypeScript, Vite e Tailwind CSS e consome a API em JSON.
 
 ## Requisitos
 
-- JDK 21
-- MySQL Server
-- Node.js 20.19+ ou 22.12+ e npm
+- Docker em execução, com suporte ao comando `docker compose`. Consulte a [instalação do Docker Compose](https://docs.docker.com/compose/install/).
+- Portas locais `5173`, `8080` e `3307` disponíveis.
+- Acesso à internet para baixar imagens e dependências na primeira construção e nas atualizações.
 
-O Maven Wrapper está incluído em `backend/`; não é necessário instalar Maven separadamente.
+Java 21, Maven, Node.js 24, npm e MySQL 8.4.13 são fornecidos pelos containers. A construção do backend utiliza o Maven Wrapper incluído no projeto.
 
-## Preparar o banco
+## Executar o projeto
 
-Crie o banco no MySQL:
+Abra um terminal na raiz do repositório, onde está o arquivo `compose.yaml`. Os comandos Docker Compose deste README devem ser executados nessa pasta.
 
-```sql
-CREATE DATABASE adocao_bd CHARACTER SET utf8mb4;
-USE adocao_bd;
+### Configuração inicial
+
+Crie um arquivo chamado `.env` na raiz do projeto, ao lado de `compose.yaml`, com este conteúdo. Substitua os valores de exemplo pelas senhas que serão usadas na sua máquina:
+
+```dotenv
+MYSQL_ROOT_PASSWORD=troque_por_uma_senha_root
+MYSQL_PASSWORD=troque_por_uma_senha_plumaris
 ```
 
-Com `adocao_bd` selecionado, execute os scripts nesta ordem:
+`MYSQL_ROOT_PASSWORD` define a senha administrativa do MySQL. `MYSQL_PASSWORD` define a senha do usuário `plumaris`, utilizado pela aplicação e pelo acesso ao banco. O `.env` é ignorado pelo Git e deve ser criado em cada máquina.
+
+Inicie os três serviços:
+
+```bash
+docker compose up --build -d
+```
+
+Na primeira execução, o Docker baixa as imagens, compila o backend e instala as dependências do frontend. O MySQL prepara o banco automaticamente; o backend aguarda a verificação de saúde do banco antes de iniciar.
+
+Depois da inicialização, acesse:
+
+| Serviço | Endereço no computador |
+| --- | --- |
+| Interface | [http://localhost:5173](http://localhost:5173) |
+| API: lista de animais | [http://localhost:8080/api/animais](http://localhost:8080/api/animais) |
+| MySQL | `127.0.0.1:3307` |
+
+### Iniciar, acompanhar e encerrar
+
+| Ação | Comando |
+| --- | --- |
+| Iniciar novamente com as imagens existentes | `docker compose up -d` |
+| Construir as imagens e iniciar | `docker compose up --build -d` |
+| Conferir os serviços e as portas | `docker compose ps` |
+| Acompanhar os logs dos serviços | `docker compose logs -f` |
+| Consultar os logs do backend | `docker compose logs backend` |
+| Consultar os logs do frontend | `docker compose logs frontend` |
+| Consultar os logs do banco | `docker compose logs mysql` |
+| Encerrar o projeto, preservando os volumes | `docker compose down` |
+
+Pressione `Ctrl+C` para sair do acompanhamento dos logs; os serviços iniciados com `-d` continuam em execução.
+
+Os dados do banco ficam no volume `mysql_data`, e as dependências do frontend no volume `frontend_node_modules`. **A opção `-v` em `docker compose down` remove esses volumes, incluindo os dados do banco.** Para encerrar o trabalho e continuar depois, use `docker compose down` sem essa opção.
+
+## Banco de dados
+
+### Carga automática
+
+Na primeira inicialização de um volume de dados novo, o MySQL cria `adocao_bd`, cria o usuário `plumaris` e executa estes scripts em ordem:
 
 1. `database/01_criacao_tabelas.sql`
 2. `database/02_insercao_dados.sql`
@@ -41,23 +88,48 @@ Com `adocao_bd` selecionado, execute os scripts nesta ordem:
 6. `database/08_procedimentos.sql`
 7. `database/09_triggers.sql`
 
-Como alternativa aos dois primeiros passos, execute somente `database/01_criacao_e_insercao.sql`, que reúne a versão atual dos scripts de criação e inserção em um único arquivo. O arquivo `database/06_consultas_avancadas.sql` pode ser executado depois para conferir diretamente as quatro consultas da Etapa 04 e o conteúdo das duas visões. Os scripts `07_funcoes.sql`, `08_procedimentos.sql` e `09_triggers.sql` criam as rotinas e os gatilhos do banco e incluem consultas de demonstração ao final de cada arquivo.
+O Compose monta esses arquivos individualmente, como somente leitura, em `/docker-entrypoint-initdb.d/`. O script combinado `database/01_criacao_e_insercao.sql` fica fora dessa carga para evitar repetir a criação e a inserção.
 
-Os scripts de carga foram preparados para um banco vazio. A carga inicial contém 30 animais; confira com `SELECT COUNT(*) FROM Animal;`.
+A carga inicial contém 30 animais. Para conferir pelo terminal, abra o cliente MySQL do container e informe a senha de `MYSQL_PASSWORD`:
 
-## Configurar e executar o backend
-
-O arquivo `backend/src/main/resources/application.yaml` usa `127.0.0.1:3306`, o banco `adocao_bd` e o usuário MySQL `root`. Defina a variável de ambiente `DB_PASSWORD` com a senha desse usuário antes de iniciar a aplicação. Não grave a senha no repositório.
-
-Na pasta `backend/`, execute:
-
-```powershell
-.\mvnw.cmd spring-boot:run
+```bash
+docker compose exec mysql mysql -u plumaris -p adocao_bd
 ```
 
-Em Linux ou macOS, use `./mvnw spring-boot:run`. No Eclipse, importe `backend/` como projeto Maven e execute `br.org.plumaris.adocao.AdocaoApplication` como aplicação Java. Se a variável `DB_PASSWORD` foi criada após abrir o Eclipse, reinicie o IDE antes de executar.
+No cliente SQL, execute:
 
-O servidor inicia na porta 8080. As rotas de consulta de animais são:
+```sql
+SELECT COUNT(*) AS total_animais FROM Animal;
+```
+
+Os scripts de inicialização são executados apenas quando o diretório de dados está vazio. Alterar um arquivo SQL ou reiniciar os containers não reaplica a carga ao volume existente. Para atualizar o banco atual, execute o SQL da alteração pelo cliente ou pelo Workbench, mantendo o script correspondente atualizado para novas instalações. Da mesma forma, alterar as senhas no `.env` não troca as senhas de usuários de um banco já inicializado.
+
+As consultas `database/03_consultas.sql` e `database/06_consultas_avancadas.sql` estão disponíveis para execução manual. As demonstrações dos procedimentos e triggers estão em `database/exemplos/`; elas executam operações de teste e ficam fora da carga automática. Selecione `adocao_bd` antes de executá-las.
+
+Cada máquina mantém seu próprio volume de dados. Para transportar os registros atuais entre máquinas, exporte e importe um backup; os scripts fornecem o estado inicial.
+
+### Acessar pelo Workbench
+
+Com o serviço `mysql` em execução, crie uma conexão TCP/IP:
+
+| Campo | Valor |
+| --- | --- |
+| Nome da conexão | `Plumaris Docker` |
+| Host | `127.0.0.1` |
+| Porta | `3307` |
+| Usuário | `plumaris` |
+| Senha | Valor de `MYSQL_PASSWORD` no `.env` |
+| Schema padrão | `adocao_bd` |
+
+A porta `3307` é a entrada pelo computador. Dentro da rede do Compose, o backend acessa o banco em `mysql:3306`.
+
+## Configuração e API do backend
+
+O Compose fornece `DB_URL=jdbc:mysql://mysql:3306/adocao_bd`, `DB_USERNAME=plumaris` e `DB_PASSWORD` com o valor de `MYSQL_PASSWORD`. Essas variáveis são consumidas por `backend/src/main/resources/application.yaml`.
+
+O frontend recebe `API_PROXY_TARGET=http://backend:8080`, utilizado pelo Vite para encaminhar as chamadas `/api` ao backend. O navegador acessa a interface pela porta `5173`.
+
+As rotas de consulta de animais são:
 
 - `GET /api/animais`: lista os animais com os nomes do centro de adoção e da raça.
 - `GET /api/animais/resumo-por-especie`: retorna os totais de animais disponíveis e indisponíveis por espécie.
@@ -87,20 +159,19 @@ Para gerenciar animais, a API oferece também `GET /api/animais/{id}`, `POST /ap
 
 Para gerenciar raças, a API oferece `GET /api/racas`, `GET /api/racas/{id}`, `POST /api/racas`, `PUT /api/racas/{id}` e `DELETE /api/racas/{id}`. As requisições de criação e alteração recebem JSON como `{"name":"Corgi","species":"Cao"}`. Os valores aceitos para `species` são `Cao` e `Gato`. Ao excluir uma raça usada por animais ou preferências, os registros permanecem com `idRaca` nulo, conforme as chaves estrangeiras do banco.
 
-## Executar o frontend
-
-Na pasta `frontend/`, instale as dependências e inicie o servidor de desenvolvimento:
-
-```powershell
-npm install
-npm run dev
-```
-
-Acesse `http://localhost:5173` com o backend em execução na porta 8080. O servidor de desenvolvimento do Vite encaminha as chamadas `/api` ao Spring Boot. Para hospedar o frontend separadamente em produção, configure o servidor HTTP para encaminhar `/api` ao backend.
+## Desenvolvimento
 
 O painel mostra gráficos de espécie, disponibilidade e faixas etárias calculados a partir das consultas SQL. As seções **Animais** e **Raças** permitem cadastro, edição e exclusão; **Consultas** apresenta quinze painéis: as quatro consultas originais, as quatro consultas avançadas, as duas visões gerenciais, as duas funções SQL, os dois procedimentos armazenados e a gestão de interesses e histórico de auditoria dos triggers.
 
-Para conferir a compilação e as regras de código, execute `npm run build` e `npm run lint`.
+### Alterar o backend
+
+Edite os arquivos de `backend/` no seu editor e reconstrua o serviço:
+
+```bash
+docker compose up --build -d backend
+```
+
+O backend executa o `.jar` compilado; as mudanças em Java entram em funcionamento após a reconstrução. O Dockerfile usa Java 21 e executa `mvnw package`, incluindo os testes, antes de copiar o `.jar` para a imagem de execução. O volume do MySQL é preservado durante a atualização do backend.
 
 ## Contribuição
 
