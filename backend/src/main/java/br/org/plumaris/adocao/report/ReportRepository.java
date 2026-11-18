@@ -29,37 +29,45 @@ public class ReportRepository {
                 ON a.idCentro = c.idConta
                 AND a.disponibilidade = 1
             WHERE a.idAnimal IS NULL
+                AND (? IS NULL OR TRIM(REGEXP_REPLACE(c.cidade, '[[:space:]]+', ' ')) = ?)
+                AND (? IS NULL OR c.estado = ?)
             ORDER BY c.nome, c.idConta
             """;
 
     private static final String BREED_ANIMAL_COVERAGE_SQL = """
-            SELECT
-                r.idRaca,
-                r.nome AS racaNome,
-                r.especie AS racaEspecie,
-                a.idAnimal,
-                a.nome AS animalNome,
-                a.especie AS animalEspecie,
-                CASE
-                    WHEN a.idAnimal IS NULL THEN 'Raca sem animal'
-                    ELSE 'Raca com animal'
-                END AS situacaoVinculo
-            FROM Raca r
-            LEFT JOIN Animal a ON a.idRaca = r.idRaca
+            WITH cobertura AS (
+                SELECT
+                    r.idRaca,
+                    r.nome AS racaNome,
+                    r.especie AS racaEspecie,
+                    a.idAnimal,
+                    a.nome AS animalNome,
+                    a.especie AS animalEspecie,
+                    CASE
+                        WHEN a.idAnimal IS NULL THEN 'Raca sem animal'
+                        ELSE 'Raca com animal'
+                    END AS situacaoVinculo
+                FROM Raca r
+                LEFT JOIN Animal a ON a.idRaca = r.idRaca
 
-            UNION ALL
+                UNION ALL
 
-            SELECT
-                r.idRaca,
-                r.nome AS racaNome,
-                r.especie AS racaEspecie,
-                a.idAnimal,
-                a.nome AS animalNome,
-                a.especie AS animalEspecie,
-                'Animal sem raca' AS situacaoVinculo
-            FROM Animal a
-            LEFT JOIN Raca r ON r.idRaca = a.idRaca
-            WHERE r.idRaca IS NULL
+                SELECT
+                    r.idRaca,
+                    r.nome AS racaNome,
+                    r.especie AS racaEspecie,
+                    a.idAnimal,
+                    a.nome AS animalNome,
+                    a.especie AS animalEspecie,
+                    'Animal sem raca' AS situacaoVinculo
+                FROM Animal a
+                LEFT JOIN Raca r ON r.idRaca = a.idRaca
+                WHERE r.idRaca IS NULL
+            )
+            SELECT *
+            FROM cobertura
+            WHERE (? IS NULL OR COALESCE(racaEspecie, animalEspecie) = ?)
+                AND (? IS NULL OR situacaoVinculo = ?)
             ORDER BY idRaca, idAnimal
             """;
 
@@ -100,6 +108,9 @@ public class ReportRepository {
                         AND TIMESTAMPDIFF(YEAR, a.dataNascimento, CURDATE()) <= p.idadeMaxima
                     ))
             )
+                AND (? IS NULL OR u.idConta = ?)
+                AND (? IS NULL OR p.especieDesejada = ?)
+                AND (? IS NULL OR p.idRaca = ?)
             ORDER BY u.nome, u.idConta
             """;
 
@@ -131,18 +142,27 @@ public class ReportRepository {
                         AND a2.dataNascimento IS NOT NULL
                         AND a2.dataNascimento <= CURDATE()
                 )
+                AND (? IS NULL OR a.especie = ?)
+                -- O centro recorta apenas os animais exibidos. A média continua global por espécie.
+                AND (? IS NULL OR a.idCentro = ?)
             ORDER BY a.especie, a.dataNascimento, a.idAnimal
             """;
 
     private static final String CENTER_OPERATIONS_SQL = """
             SELECT *
             FROM vw_painel_operacional_centros
+            WHERE (? IS NULL OR idCentro = ?)
+                AND (? IS NULL OR TRIM(REGEXP_REPLACE(cidade, '[[:space:]]+', ' ')) = ?)
+                AND (? IS NULL OR estado = ?)
             ORDER BY centroNome, idCentro
             """;
 
     private static final String BREED_SUPPLY_DEMAND_SQL = """
             SELECT *
             FROM vw_oferta_demanda_por_raca
+            WHERE (? IS NULL OR especie = ?)
+                AND (? IS NULL OR idRaca = ?)
+                AND (? IS NULL OR situacaoOferta = ?)
             ORDER BY especie, racaNome, idRaca
             """;
 
@@ -216,15 +236,15 @@ public class ReportRepository {
         this.connectionFactory = connectionFactory;
     }
 
-    public List<EmptyCenterResponse> findCentersWithoutAvailableAnimals() {
+    public List<EmptyCenterResponse> findCentersWithoutAvailableAnimals(String city, String state) {
         return query(EMPTY_CENTERS_SQL, results -> new EmptyCenterResponse(
                 results.getInt("idCentro"),
                 results.getString("centroNome"),
                 results.getString("cidade"),
-                results.getString("estado")));
+                results.getString("estado")), city, city, state, state);
     }
 
-    public List<BreedAnimalCoverageResponse> findBreedAnimalCoverage() {
+    public List<BreedAnimalCoverageResponse> findBreedAnimalCoverage(String species, String matchStatus) {
         return query(BREED_ANIMAL_COVERAGE_SQL, results -> new BreedAnimalCoverageResponse(
                 results.getObject("idRaca", Integer.class),
                 results.getString("racaNome"),
@@ -232,10 +252,10 @@ public class ReportRepository {
                 results.getObject("idAnimal", Integer.class),
                 results.getString("animalNome"),
                 results.getString("animalEspecie"),
-                results.getString("situacaoVinculo")));
+                results.getString("situacaoVinculo")), species, species, matchStatus, matchStatus);
     }
 
-    public List<UnmetPreferenceResponse> findUnmetPreferences() {
+    public List<UnmetPreferenceResponse> findUnmetPreferences(Integer userId, String desiredSpecies, Integer breedId) {
         return query(UNMET_PREFERENCES_SQL, results -> new UnmetPreferenceResponse(
                 results.getInt("idUsuario"),
                 results.getString("usuarioNome"),
@@ -247,20 +267,20 @@ public class ReportRepository {
                 results.getString("sexoDesejado"),
                 results.getString("corDesejada"),
                 results.getObject("idRaca", Integer.class),
-                results.getString("racaDesejadaNome")));
+                results.getString("racaDesejadaNome")), userId, userId, desiredSpecies, desiredSpecies, breedId, breedId);
     }
 
-    public List<OlderAnimalResponse> findOlderThanSpeciesAverage() {
+    public List<OlderAnimalResponse> findOlderThanSpeciesAverage(String species, Integer centerId) {
         return query(OLDER_ANIMALS_SQL, results -> new OlderAnimalResponse(
                 results.getInt("idAnimal"),
                 results.getString("animalNome"),
                 results.getString("especie"),
                 results.getInt("idadeAnos"),
                 results.getDouble("mediaIdadeEspecie"),
-                results.getString("centroNome")));
+                results.getString("centroNome")), species, species, centerId, centerId);
     }
 
-    public List<CenterOperationsResponse> findCenterOperations() {
+    public List<CenterOperationsResponse> findCenterOperations(Integer centerId, String city, String state) {
         return query(CENTER_OPERATIONS_SQL, results -> {
             Timestamp lastInterest = results.getTimestamp("ultimoInteresse");
             return new CenterOperationsResponse(
@@ -275,10 +295,10 @@ public class ReportRepository {
                     results.getLong("animaisIndisponiveis"),
                     results.getLong("totalInteresses"),
                     lastInterest == null ? null : lastInterest.toLocalDateTime());
-        });
+        }, centerId, centerId, city, city, state, state);
     }
 
-    public List<BreedSupplyDemandResponse> findBreedSupplyDemand() {
+    public List<BreedSupplyDemandResponse> findBreedSupplyDemand(String species, Integer breedId, String supplyStatus) {
         return query(BREED_SUPPLY_DEMAND_SQL, results -> new BreedSupplyDemandResponse(
                 results.getInt("idRaca"),
                 results.getString("racaNome"),
@@ -290,7 +310,7 @@ public class ReportRepository {
                 results.getLong("usuariosInteressados"),
                 results.getLong("totalInteresses"),
                 results.getLong("saldoOferta"),
-                results.getString("situacaoOferta")));
+                results.getString("situacaoOferta")), species, species, breedId, breedId, supplyStatus, supplyStatus);
     }
 
     public List<AnimalPriorityResponse> findAnimalPriorities() {
@@ -404,15 +424,19 @@ public class ReportRepository {
         }
     }
 
-    private <T> List<T> query(String sql, RowMapper<T> mapper) {
+    private <T> List<T> query(String sql, RowMapper<T> mapper, Object... parameters) {
         List<T> rows = new ArrayList<>();
         try (Connection connection = connectionFactory.openConnection();
-                PreparedStatement statement = connection.prepareStatement(sql);
-                ResultSet results = statement.executeQuery()) {
-            while (results.next()) {
-                rows.add(mapper.map(results));
+                PreparedStatement statement = connection.prepareStatement(sql)) {
+            for (int index = 0; index < parameters.length; index++) {
+                statement.setObject(index + 1, parameters[index]);
             }
-            return rows;
+            try (ResultSet results = statement.executeQuery()) {
+                while (results.next()) {
+                    rows.add(mapper.map(results));
+                }
+                return rows;
+            }
         } catch (SQLException exception) {
             throw DatabaseException.from(exception);
         }

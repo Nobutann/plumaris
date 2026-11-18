@@ -1,18 +1,19 @@
 import type {
   AdoptionCompletionResult,
-  AdvancedReports,
   AgeGroupSummary,
   Animal,
   AnimalAuditLogReport,
   AnimalCompatibilityReport,
   AnimalInput,
   AnimalPriorityReport,
+  AnimalReportFilters,
   Breed,
   BreedInput,
   BreedAnimalCoverageReport,
   BreedSupplyDemandReport,
   Center,
   CenterInput,
+  CenterLocationFilters,
   CenterOperationsReport,
   CompleteAdoptionInput,
   DashboardData,
@@ -25,6 +26,7 @@ import type {
   PreferenceInput,
   RedistributeAnimalsInput,
   RedistributionResult,
+  ReportFilters,
   SpeciesSummary,
   UnmetPreferenceReport,
   UserSummary,
@@ -72,6 +74,15 @@ function listCenters(signal?: AbortSignal): Promise<Center[]> {
   return request<Center[]>('/centros', { signal, cache: 'no-store' })
 }
 
+function requestReport<T>(path: string, filters: ReportFilters, signal?: AbortSignal): Promise<T> {
+  const params = new URLSearchParams()
+  for (const [key, value] of Object.entries(filters)) {
+    if (value !== undefined && value !== '') params.set(key, String(value))
+  }
+  const query = params.size ? `?${params}` : ''
+  return request<T>(`${path}${query}`, { signal, cache: 'no-store' })
+}
+
 export const api = {
   listCenters,
 
@@ -96,21 +107,48 @@ export const api = {
     return { animals, breeds, centers, speciesSummary, ageGroupSummary }
   },
 
-  recommendedAnimals(userId: number): Promise<Animal[]> {
-    return request<Animal[]>(`/animais/recomendados?userId=${userId}`)
+  animals(filters: AnimalReportFilters, signal?: AbortSignal): Promise<Animal[]> {
+    return requestReport('/animais', filters, signal)
   },
 
-  async loadAdvancedReports(): Promise<AdvancedReports> {
-    const [emptyCenters, breedAnimalCoverage, unmetPreferences, olderAnimals, centerOperations, breedSupplyDemand] = await Promise.all([
-      request<EmptyCenterReport[]>('/relatorios/centros-sem-animais-disponiveis'),
-      request<BreedAnimalCoverageReport[]>('/relatorios/cobertura-racas-animais'),
-      request<UnmetPreferenceReport[]>('/relatorios/preferencias-nao-atendidas'),
-      request<OlderAnimalReport[]>('/relatorios/animais-acima-media-idade'),
-      request<CenterOperationsReport[]>('/relatorios/painel-centros'),
-      request<BreedSupplyDemandReport[]>('/relatorios/oferta-demanda-racas'),
-    ])
+  speciesSummary(filters: AnimalReportFilters, signal?: AbortSignal): Promise<SpeciesSummary[]> {
+    return requestReport('/animais/resumo-por-especie', filters, signal)
+  },
 
-    return { emptyCenters, breedAnimalCoverage, unmetPreferences, olderAnimals, centerOperations, breedSupplyDemand }
+  ageGroupSummary(filters: AnimalReportFilters, signal?: AbortSignal): Promise<AgeGroupSummary[]> {
+    return requestReport('/animais/faixas-etarias', filters, signal)
+  },
+
+  recommendedAnimals(userId: number, signal?: AbortSignal): Promise<Animal[]> {
+    return requestReport('/animais/recomendados', { userId }, signal)
+  },
+
+  emptyCenters(filters: CenterLocationFilters, signal?: AbortSignal): Promise<EmptyCenterReport[]> {
+    return requestReport('/relatorios/centros-sem-animais-disponiveis', filters, signal)
+  },
+
+  breedAnimalCoverage(filters: Pick<ReportFilters, 'species' | 'matchStatus'>, signal?: AbortSignal): Promise<BreedAnimalCoverageReport[]> {
+    return requestReport('/relatorios/cobertura-racas-animais', filters, signal)
+  },
+
+  unmetPreferences(filters: Pick<ReportFilters, 'userId' | 'desiredSpecies' | 'breedId'>, signal?: AbortSignal): Promise<UnmetPreferenceReport[]> {
+    return requestReport('/relatorios/preferencias-nao-atendidas', filters, signal)
+  },
+
+  olderAnimals(filters: Pick<ReportFilters, 'species' | 'centerId'>, signal?: AbortSignal): Promise<OlderAnimalReport[]> {
+    return requestReport('/relatorios/animais-acima-media-idade', filters, signal)
+  },
+
+  centerOperations(filters: CenterLocationFilters & Pick<ReportFilters, 'centerId'>, signal?: AbortSignal): Promise<CenterOperationsReport[]> {
+    return requestReport('/relatorios/painel-centros', filters, signal)
+  },
+
+  breedSupplyDemand(filters: Pick<ReportFilters, 'species' | 'breedId' | 'supplyStatus'>, signal?: AbortSignal): Promise<BreedSupplyDemandReport[]> {
+    return requestReport('/relatorios/oferta-demanda-racas', filters, signal)
+  },
+
+  listUsers(signal?: AbortSignal): Promise<UserSummary[]> {
+    return request<UserSummary[]>('/usuarios', { signal })
   },
 
   createAnimal(input: AnimalInput): Promise<Animal> {

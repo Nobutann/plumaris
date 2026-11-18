@@ -169,6 +169,28 @@ A seção **Preferências** usa as seguintes rotas:
 
 Cada usuário pode ter uma preferência. Para criar ou editar, informe `userId` e, opcionalmente, `desiredSpecies`, `desiredSize`, `minimumAge`, `maximumAge`, `desiredSex`, `desiredColor` e `breedId`. Use `null` ou omita um critério para deixá-lo sem restrição. As idades são em anos completos.
 
+### Filtros da seção Consultas
+
+Cada relatório tem seu próprio recorte. **Aplicar filtros** consulta a API com os valores do formulário, e **Limpar filtros** volta à lista completa. O formulário mostra os filtros aplicados à consulta.
+
+| Rotas GET | Parâmetros opcionais |
+| --- | --- |
+| `/api/animais`, `/api/animais/resumo-por-especie`, `/api/animais/faixas-etarias` | `species`, `centerId`, `available`. Nos resumos, filtram os animais antes do agrupamento. |
+| `/api/relatorios/centros-sem-animais-disponiveis` | `city`, `state`. Selecionam centros da região que não têm animais disponíveis. |
+| `/api/relatorios/cobertura-racas-animais` | `species`, `matchStatus` (`Raca com animal`, `Raca sem animal`, `Animal sem raca`). Vale a espécie da raça quando há raça, e a do animal nos demais casos. |
+| `/api/relatorios/preferencias-nao-atendidas` | `userId`, `desiredSpecies`, `breedId`. Selecionam preferências exibidas. A procura por animais compatíveis continua global. |
+| `/api/relatorios/animais-acima-media-idade` | `species`, `centerId`. A média continua sendo a dos animais disponíveis da espécie em todos os centros, com nascimento válido. |
+| `/api/relatorios/painel-centros` | `centerId`, `city`, `state`. Selecionam linhas da visão operacional com seus totais. |
+| `/api/relatorios/oferta-demanda-racas` | `species`, `breedId`, `supplyStatus` (`Deficit de oferta`, `Superavit de oferta`, `Oferta equilibrada`). Selecionam linhas da visão com seus totais. |
+
+Espécies aceitas são `Cao` e `Gato`, IDs devem ser inteiros positivos e `available` aceita `true` ou `false`. Cidade usa igualdade após normalizar espaços, e UF aceita os códigos brasileiros em maiúsculas ou minúsculas. Um parâmetro omitido deixa o respectivo campo sem restrição. Valores inválidos retornam `400` com `detail`. Uma busca válida sem correspondências retorna `200` com `[]`.
+
+Exemplos de recortes na API
+
+- `GET /api/animais/resumo-por-especie?species=Cao&centerId=32&available=false`
+- `GET /api/relatorios/centros-sem-animais-disponiveis?city=S%C3%A3o%20Paulo&state=sp`
+- `GET /api/relatorios/oferta-demanda-racas?species=Gato&supplyStatus=Deficit%20de%20oferta`
+
 ### Estatísticas do dashboard
 
 Abra **Painel** e selecione espécie, centro e disponibilidade para recortar os animais. Use as datas inicial e final para restringir os interesses. **Aplicar filtros** consulta a API, **Limpar filtros** restaura a visão completa e **Atualizar dados** repete a consulta com os filtros aplicados. O painel informa o recorte e a data de referência usados pela API.

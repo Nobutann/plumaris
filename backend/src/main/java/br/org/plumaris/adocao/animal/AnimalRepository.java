@@ -19,6 +19,12 @@ import br.org.plumaris.adocao.database.DatabaseException;
 @Repository
 public class AnimalRepository {
 
+    private static final String ANIMAL_FILTERS_SQL = """
+            WHERE (? IS NULL OR a.especie = ?)
+                AND (? IS NULL OR a.idCentro = ?)
+                AND (? IS NULL OR a.disponibilidade = ?)
+            """;
+
     private static final String FIND_ALL_SQL = """
             SELECT
                 a.idAnimal,
@@ -37,6 +43,7 @@ public class AnimalRepository {
             FROM Animal a
             JOIN Centro_Adocao c ON c.idConta = a.idCentro
             LEFT JOIN Raca r ON r.idRaca = a.idRaca
+            """ + ANIMAL_FILTERS_SQL + """
             ORDER BY a.idAnimal
             """;
 
@@ -68,6 +75,7 @@ public class AnimalRepository {
                 SUM(CASE WHEN a.disponibilidade = 1 THEN 1 ELSE 0 END) AS available,
                 SUM(CASE WHEN a.disponibilidade = 0 THEN 1 ELSE 0 END) AS unavailable
             FROM Animal a
+            """ + ANIMAL_FILTERS_SQL + """
             GROUP BY a.especie
             ORDER BY a.especie
             """;
@@ -83,6 +91,7 @@ public class AnimalRepository {
                 END AS ageGroup,
                 COUNT(*) AS total
             FROM Animal a
+            """ + ANIMAL_FILTERS_SQL + """
             GROUP BY a.especie, ageGroup
             ORDER BY a.especie, ageGroup
             """;
@@ -160,15 +169,17 @@ public class AnimalRepository {
         this.connectionFactory = connectionFactory;
     }
 
-    public List<AnimalResponse> findAll() {
+    public List<AnimalResponse> findAll(String species, Integer centerId, Boolean available) {
         List<AnimalResponse> animals = new ArrayList<>();
         try (Connection connection = connectionFactory.openConnection();
-                PreparedStatement statement = connection.prepareStatement(FIND_ALL_SQL);
-                ResultSet results = statement.executeQuery()) {
-            while (results.next()) {
-                animals.add(mapAnimal(results));
+                PreparedStatement statement = connection.prepareStatement(FIND_ALL_SQL)) {
+            bindAnimalFilters(statement, species, centerId, available);
+            try (ResultSet results = statement.executeQuery()) {
+                while (results.next()) {
+                    animals.add(mapAnimal(results));
+                }
+                return animals;
             }
-            return animals;
         } catch (SQLException exception) {
             throw DatabaseException.from(exception);
         }
@@ -186,36 +197,40 @@ public class AnimalRepository {
         }
     }
 
-    public List<AnimalSpeciesSummary> summarizeBySpecies() {
+    public List<AnimalSpeciesSummary> summarizeBySpecies(String species, Integer centerId, Boolean available) {
         List<AnimalSpeciesSummary> summaries = new ArrayList<>();
         try (Connection connection = connectionFactory.openConnection();
-                PreparedStatement statement = connection.prepareStatement(SPECIES_SUMMARY_SQL);
-                ResultSet results = statement.executeQuery()) {
-            while (results.next()) {
-                summaries.add(new AnimalSpeciesSummary(
-                        results.getString("especie"),
-                        results.getLong("total"),
-                        results.getLong("available"),
-                        results.getLong("unavailable")));
+                PreparedStatement statement = connection.prepareStatement(SPECIES_SUMMARY_SQL)) {
+            bindAnimalFilters(statement, species, centerId, available);
+            try (ResultSet results = statement.executeQuery()) {
+                while (results.next()) {
+                    summaries.add(new AnimalSpeciesSummary(
+                            results.getString("especie"),
+                            results.getLong("total"),
+                            results.getLong("available"),
+                            results.getLong("unavailable")));
+                }
+                return summaries;
             }
-            return summaries;
         } catch (SQLException exception) {
             throw DatabaseException.from(exception);
         }
     }
 
-    public List<AnimalAgeGroupSummary> summarizeByAgeGroup() {
+    public List<AnimalAgeGroupSummary> summarizeByAgeGroup(String species, Integer centerId, Boolean available) {
         List<AnimalAgeGroupSummary> summaries = new ArrayList<>();
         try (Connection connection = connectionFactory.openConnection();
-                PreparedStatement statement = connection.prepareStatement(AGE_GROUP_SUMMARY_SQL);
-                ResultSet results = statement.executeQuery()) {
-            while (results.next()) {
-                summaries.add(new AnimalAgeGroupSummary(
-                        results.getString("especie"),
-                        results.getString("ageGroup"),
-                        results.getLong("total")));
+                PreparedStatement statement = connection.prepareStatement(AGE_GROUP_SUMMARY_SQL)) {
+            bindAnimalFilters(statement, species, centerId, available);
+            try (ResultSet results = statement.executeQuery()) {
+                while (results.next()) {
+                    summaries.add(new AnimalAgeGroupSummary(
+                            results.getString("especie"),
+                            results.getString("ageGroup"),
+                            results.getLong("total")));
+                }
+                return summaries;
             }
-            return summaries;
         } catch (SQLException exception) {
             throw DatabaseException.from(exception);
         }
@@ -296,6 +311,16 @@ public class AnimalRepository {
         } catch (SQLException exception) {
             throw DatabaseException.from(exception);
         }
+    }
+
+    private static void bindAnimalFilters(PreparedStatement statement, String species, Integer centerId,
+            Boolean available) throws SQLException {
+        statement.setString(1, species);
+        statement.setString(2, species);
+        statement.setObject(3, centerId, Types.INTEGER);
+        statement.setObject(4, centerId, Types.INTEGER);
+        statement.setObject(5, available, Types.BOOLEAN);
+        statement.setObject(6, available, Types.BOOLEAN);
     }
 
     private static void bindAnimal(PreparedStatement statement, AnimalRequest request) throws SQLException {

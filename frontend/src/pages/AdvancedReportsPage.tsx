@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { api } from '../api'
+import { ReportFilterForm } from './ReportFilterForm'
 import { ageGroupLabel, dateLabel, sexLabel, sizeLabel, speciesLabel } from '../format'
 import type {
   AdoptionCompletionResult,
-  AdvancedReports,
   Animal,
   AnimalAuditLogReport,
   AnimalCompatibilityReport,
   AnimalPriorityReport,
   DashboardData,
   RedistributionResult,
+  ReportFilters,
   UnmetPreferenceReport,
 } from '../types'
 import {
@@ -47,6 +48,20 @@ const reports = [
 type ReportId = typeof reports[number]['id']
 type LoadStatus = 'loading' | 'ready' | 'error'
 
+const animalFilters = ['species', 'centerId', 'available'] as const
+const reportFields: Partial<Record<ReportId, readonly (keyof ReportFilters)[]>> = {
+  1: animalFilters,
+  2: animalFilters,
+  3: animalFilters,
+  5: ['city', 'state'],
+  6: ['species', 'matchStatus'],
+  7: ['userId', 'desiredSpecies', 'breedId'],
+  8: ['species', 'centerId'],
+  9: ['centerId', 'city', 'state'],
+  10: ['species', 'breedId', 'supplyStatus'],
+}
+const noFilters: ReportFilters = {}
+
 export function AdvancedReportsPage({
   data,
   refresh,
@@ -56,12 +71,9 @@ export function AdvancedReportsPage({
 }) {
   const [activeReport, setActiveReport] = useState<ReportId>(1)
   const [userId, setUserId] = useState('1')
-  const [recommended, setRecommended] = useState<Animal[]>([])
-  const [recommendationStatus, setRecommendationStatus] = useState<LoadStatus>('loading')
-  const [recommendationError, setRecommendationError] = useState('')
-  const [advanced, setAdvanced] = useState<AdvancedReports | null>(null)
-  const [advancedStatus, setAdvancedStatus] = useState<LoadStatus>('loading')
-  const [advancedError, setAdvancedError] = useState('')
+  const [recommendation, setRecommendation] = useState({ userId: 1 })
+  const [drafts, setDrafts] = useState<Partial<Record<ReportId, ReportFilters>>>({})
+  const [applied, setApplied] = useState<Partial<Record<ReportId, ReportFilters>>>({})
 
   const [priorities, setPriorities] = useState<AnimalPriorityReport[]>([])
   const [priorityStatus, setPriorityStatus] = useState<LoadStatus>('loading')
@@ -135,34 +147,6 @@ export function AdvancedReportsPage({
   useEffect(() => {
     let active = true
 
-    api.recommendedAnimals(1)
-      .then((animals) => {
-        if (active) {
-          setRecommended(animals)
-          setRecommendationStatus('ready')
-        }
-      })
-      .catch((cause: unknown) => {
-        if (active) {
-          setRecommendationError(cause instanceof Error ? cause.message : 'Não foi possível carregar as recomendações.')
-          setRecommendationStatus('error')
-        }
-      })
-
-    api.loadAdvancedReports()
-      .then((result) => {
-        if (active) {
-          setAdvanced(result)
-          setAdvancedStatus('ready')
-        }
-      })
-      .catch((cause: unknown) => {
-        if (active) {
-          setAdvancedError(cause instanceof Error ? cause.message : 'Não foi possível carregar os relatórios avançados.')
-          setAdvancedStatus('error')
-        }
-      })
-
     api.animalPriorities()
       .then((rows) => {
         if (active) {
@@ -208,20 +192,11 @@ export function AdvancedReportsPage({
     return () => { active = false }
   }, [])
 
-  async function searchRecommendations(event: FormEvent<HTMLFormElement>) {
+  function searchRecommendations(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const parsedId = Number(userId)
-    if (!Number.isInteger(parsedId) || parsedId < 1) return
-
-    setRecommendationStatus('loading')
-    setRecommendationError('')
-    try {
-      setRecommended(await api.recommendedAnimals(parsedId))
-      setRecommendationStatus('ready')
-    } catch (cause) {
-      setRecommendationError(cause instanceof Error ? cause.message : 'Não foi possível carregar as recomendações.')
-      setRecommendationStatus('error')
-    }
+    if (!Number.isInteger(parsedId) || parsedId < 1 || parsedId > 2_147_483_647) return
+    setRecommendation({ userId: parsedId })
   }
 
   async function searchCompatibility(event: FormEvent<HTMLFormElement>) {
@@ -252,8 +227,6 @@ export function AdvancedReportsPage({
       })
       setAdoptResult(result)
       await refresh()
-      const nextReports = await api.loadAdvancedReports()
-      setAdvanced(nextReports)
       await reloadRoutinesAndTriggersData(Number(compatUserId) || 1)
     } catch (cause) {
       setAdoptError(cause instanceof Error ? cause.message : 'Não foi possível concluir a adoção.')
@@ -274,8 +247,6 @@ export function AdvancedReportsPage({
       })
       setRedistributeResult(result)
       await refresh()
-      const nextReports = await api.loadAdvancedReports()
-      setAdvanced(nextReports)
       await reloadRoutinesAndTriggersData(Number(compatUserId) || 1)
     } catch (cause) {
       setRedistributeError(cause instanceof Error ? cause.message : 'Não foi possível redistribuir os animais.')
@@ -303,6 +274,22 @@ export function AdvancedReportsPage({
     }
   }
 
+  const reportRequest = { filters: applied[activeReport] ?? noFilters, catalog: data }
+  const fields = reportFields[activeReport]
+  const filterForm = fields && (
+    <ReportFilterForm fields={fields} data={data} draft={drafts[activeReport] ?? noFilters}
+      applied={reportRequest.filters}
+      onEdit={(draft) => setDrafts((previous) => ({ ...previous, [activeReport]: draft }))}
+      onApply={(filters) => {
+        setDrafts((previous) => ({ ...previous, [activeReport]: filters }))
+        setApplied((previous) => ({ ...previous, [activeReport]: filters }))
+      }}
+      onClear={() => {
+        setDrafts((previous) => ({ ...previous, [activeReport]: noFilters }))
+        setApplied((previous) => ({ ...previous, [activeReport]: {} }))
+      }} />
+  )
+
   return (
     <div className="space-y-5">
       <Panel title="Consultas SQL" detail="Consultas, visões gerenciais, funções, procedimentos armazenados e auditoria">
@@ -324,133 +311,157 @@ export function AdvancedReportsPage({
       </Panel>
 
       {activeReport === 1 && (
-        <Panel title="01 · Animais e centros" detail={`${data.animals.length} registros; JOIN entre Animal, Centro_Adocao e Raca`}>
-          {data.animals.length === 0 ? <EmptyState>Nenhum animal cadastrado.</EmptyState> : <AnimalResults animals={data.animals} />}
+        <Panel title="01 · Animais e centros" detail="JOIN entre Animal, Centro_Adocao e Raca">
+          {filterForm}
+          <ReportRows {...reportRequest} load={api.animals}>
+            {(animals) => <AnimalResults animals={animals} />}
+          </ReportRows>
         </Panel>
       )}
 
       {activeReport === 2 && (
         <Panel title="02 · Resumo por espécie" detail="Quantidade total, disponível e indisponível por espécie">
-          {data.speciesSummary.length === 0 ? <EmptyState>Não há dados para esta consulta.</EmptyState> : (
-            <ReportTable headers={['Espécie', 'Total', 'Disponíveis', 'Indisponíveis']}>
-              {data.speciesSummary.map((row) => <tr key={row.species} className={tableRowClass}>
-                <Cell highlight>{speciesLabel(row.species)}</Cell><Cell mono>{row.total}</Cell><Cell mono>{row.available}</Cell><Cell mono>{row.unavailable}</Cell>
-              </tr>)}
-            </ReportTable>
-          )}
+          {filterForm}
+          <ReportRows {...reportRequest} load={api.speciesSummary}>
+            {(rows) => (
+              <ReportTable headers={['Espécie', 'Total', 'Disponíveis', 'Indisponíveis']}>
+                {rows.map((row) => <tr key={row.species} className={tableRowClass}>
+                  <Cell highlight>{speciesLabel(row.species)}</Cell><Cell mono>{row.total}</Cell><Cell mono>{row.available}</Cell><Cell mono>{row.unavailable}</Cell>
+                </tr>)}
+              </ReportTable>
+            )}
+          </ReportRows>
         </Panel>
       )}
 
       {activeReport === 3 && (
         <Panel title="03 · Faixas etárias" detail="Idade calculada no banco a partir da data de nascimento">
-          {data.ageGroupSummary.length === 0 ? <EmptyState>Não há dados para esta consulta.</EmptyState> : (
-            <ReportTable headers={['Espécie', 'Faixa etária', 'Animais']}>
-              {data.ageGroupSummary.map((row) => <tr key={`${row.species}-${row.ageGroup}`} className={tableRowClass}>
-                <Cell highlight>{speciesLabel(row.species)}</Cell><Cell>{ageGroupLabel(row.ageGroup)}</Cell><Cell mono>{row.total}</Cell>
-              </tr>)}
-            </ReportTable>
-          )}
+          {filterForm}
+          <ReportRows {...reportRequest} load={api.ageGroupSummary}>
+            {(rows) => (
+              <ReportTable headers={['Espécie', 'Faixa etária', 'Animais']}>
+                {rows.map((row) => <tr key={`${row.species}-${row.ageGroup}`} className={tableRowClass}>
+                  <Cell highlight>{speciesLabel(row.species)}</Cell><Cell>{ageGroupLabel(row.ageGroup)}</Cell><Cell mono>{row.total}</Cell>
+                </tr>)}
+              </ReportTable>
+            )}
+          </ReportRows>
         </Panel>
       )}
 
       {activeReport === 4 && (
         <Panel title="04 · Recomendações" detail="Animais disponíveis que atendem às preferências do usuário informado">
-          <form onSubmit={(event) => void searchRecommendations(event)} className="flex flex-wrap items-end gap-3 border-b border-[#29465b] p-4">
+          <form onSubmit={searchRecommendations} className="flex flex-wrap items-end gap-3 border-b border-[#29465b] p-4">
             <label className="block w-48 text-xs font-medium text-[#a9c2d2]">ID do usuário
-              <input className={`${fieldClass} mt-1.5`} type="number" min="1" step="1" required value={userId} onChange={(event) => setUserId(event.target.value)} />
+              <input className={`${fieldClass} mt-1.5`} type="number" min="1" step="1" max="2147483647" required value={userId} onChange={(event) => setUserId(event.target.value)} />
             </label>
-            <button type="submit" disabled={recommendationStatus === 'loading'} className={primaryButtonClass}>Buscar recomendações</button>
+            <button type="submit" className={primaryButtonClass}>Buscar recomendações</button>
           </form>
-          <div aria-live="polite">
-            {recommendationStatus === 'loading' && <EmptyState>Carregando recomendações...</EmptyState>}
-            {recommendationStatus === 'error' && <div className="p-4"><ErrorMessage message={recommendationError} /></div>}
-            {recommendationStatus === 'ready' && (recommended.length === 0
-              ? <EmptyState>Nenhum animal corresponde às preferências deste usuário.</EmptyState>
-              : <AnimalResults animals={recommended} />)}
-          </div>
+          <p className="px-4 pt-3 text-xs text-[#a9c2d2]">Usuário consultado · #{recommendation.userId}</p>
+          <ReportRows filters={recommendation} load={loadRecommendations}
+            emptyMessage="Nenhum animal corresponde às preferências deste usuário.">
+            {(animals) => <AnimalResults animals={animals} />}
+          </ReportRows>
         </Panel>
       )}
 
-      {activeReport >= 5 && activeReport <= 10 && advancedStatus === 'loading' && (
-        <Panel title="Relatórios avançados"><EmptyState>Carregando consultas e visões...</EmptyState></Panel>
-      )}
-      {activeReport >= 5 && activeReport <= 10 && advancedStatus === 'error' && (
-        <Panel title="Relatórios avançados"><div className="p-4"><ErrorMessage message={`${advancedError} Confirme se os scripts 04_indices.sql e 05_visoes.sql foram executados.`} /></div></Panel>
-      )}
-
-      {activeReport === 5 && advanced && (
+      {activeReport === 5 && (
         <Panel title="05 · Centros sem animais disponíveis" detail="Anti join com LEFT JOIN entre Centro_Adocao e Animal">
-          {advanced.emptyCenters.length === 0 ? <EmptyState>Todos os centros possuem ao menos um animal disponível.</EmptyState> : (
-            <ReportTable headers={['ID', 'Centro', 'Cidade', 'Estado']}>
-              {advanced.emptyCenters.map((row) => <tr key={row.centerId} className={tableRowClass}>
-                <Cell mono>#{row.centerId}</Cell><Cell highlight>{row.centerName}</Cell><Cell>{row.city || '—'}</Cell><Cell>{row.state || '—'}</Cell>
-              </tr>)}
-            </ReportTable>
-          )}
+          {filterForm}
+          <ReportRows {...reportRequest} load={api.emptyCenters}>
+            {(rows) => (
+              <ReportTable headers={['ID', 'Centro', 'Cidade', 'Estado']}>
+                {rows.map((row) => <tr key={row.centerId} className={tableRowClass}>
+                  <Cell mono>#{row.centerId}</Cell><Cell highlight>{row.centerName}</Cell><Cell>{row.city || '—'}</Cell><Cell>{row.state || '—'}</Cell>
+                </tr>)}
+              </ReportTable>
+            )}
+          </ReportRows>
         </Panel>
       )}
 
-      {activeReport === 6 && advanced && (
+      {activeReport === 6 && (
         <Panel title="06 · Cobertura entre raças e animais" detail="Full outer join emulado no MySQL com dois LEFT JOINs e UNION ALL">
-          <ReportTable headers={['Raça', 'Espécie da raça', 'Animal', 'Espécie do animal', 'Situação']}>
-            {advanced.breedAnimalCoverage.map((row, index) => <tr key={`${row.breedId ?? 'sem-raca'}-${row.animalId ?? 'sem-animal'}-${index}`} className={tableRowClass}>
-              <Cell highlight>{row.breedName ? `${row.breedName} #${row.breedId}` : '—'}</Cell>
-              <Cell>{row.breedSpecies ? speciesLabel(row.breedSpecies) : '—'}</Cell>
-              <Cell>{row.animalName ? `${row.animalName} #${row.animalId}` : '—'}</Cell>
-              <Cell>{row.animalSpecies ? speciesLabel(row.animalSpecies) : '—'}</Cell>
-              <Cell>{row.matchStatus}</Cell>
-            </tr>)}
-          </ReportTable>
+          {filterForm}
+          <ReportRows {...reportRequest} load={api.breedAnimalCoverage}>
+            {(rows) => (
+              <ReportTable headers={['Raça', 'Espécie da raça', 'Animal', 'Espécie do animal', 'Situação']}>
+                {rows.map((row, index) => <tr key={`${row.breedId ?? 'sem-raca'}-${row.animalId ?? 'sem-animal'}-${index}`} className={tableRowClass}>
+                  <Cell highlight>{row.breedName ? `${row.breedName} #${row.breedId}` : '—'}</Cell>
+                  <Cell>{row.breedSpecies ? speciesLabel(row.breedSpecies) : '—'}</Cell>
+                  <Cell>{row.animalName ? `${row.animalName} #${row.animalId}` : '—'}</Cell>
+                  <Cell>{row.animalSpecies ? speciesLabel(row.animalSpecies) : '—'}</Cell>
+                  <Cell>{row.matchStatus}</Cell>
+                </tr>)}
+              </ReportTable>
+            )}
+          </ReportRows>
         </Panel>
       )}
 
-      {activeReport === 7 && advanced && (
+      {activeReport === 7 && (
         <Panel title="07 · Preferências não atendidas" detail="Subconsulta correlacionada com NOT EXISTS">
-          {advanced.unmetPreferences.length === 0 ? <EmptyState>Todas as preferências possuem alguma correspondência disponível.</EmptyState> : (
-            <ReportTable headers={['Usuário', 'E-mail', 'Preferência', 'Idade desejada']}>
-              {advanced.unmetPreferences.map((row) => <tr key={row.userId} className={tableRowClass}>
-                <Cell highlight>{row.userName} <span className="font-mono text-xs text-[#819caf]">#{row.userId}</span></Cell>
-                <Cell>{row.email}</Cell><Cell>{preferenceLabel(row)}</Cell><Cell>{agePreferenceLabel(row)}</Cell>
-              </tr>)}
-            </ReportTable>
-          )}
+          {filterForm}
+          <ReportRows {...reportRequest} load={api.unmetPreferences}>
+            {(rows) => (
+              <ReportTable headers={['Usuário', 'E-mail', 'Preferência', 'Idade desejada']}>
+                {rows.map((row) => <tr key={row.userId} className={tableRowClass}>
+                  <Cell highlight>{row.userName} <span className="font-mono text-xs text-[#819caf]">#{row.userId}</span></Cell>
+                  <Cell>{row.email}</Cell><Cell>{preferenceLabel(row)}</Cell><Cell>{agePreferenceLabel(row)}</Cell>
+                </tr>)}
+              </ReportTable>
+            )}
+          </ReportRows>
         </Panel>
       )}
 
-      {activeReport === 8 && advanced && (
+      {activeReport === 8 && (
         <Panel title="08 · Animais acima da média etária" detail="Subconsulta correlacionada que calcula a média por espécie">
-          {advanced.olderAnimals.length === 0 ? <EmptyState>Nenhum animal disponível está acima da média de sua espécie.</EmptyState> : (
-            <ReportTable headers={['Animal', 'Espécie', 'Idade', 'Média da espécie', 'Centro']}>
-              {advanced.olderAnimals.map((row) => <tr key={row.animalId} className={tableRowClass}>
-                <Cell highlight>{row.animalName} <span className="font-mono text-xs text-[#819caf]">#{row.animalId}</span></Cell>
-                <Cell>{speciesLabel(row.species)}</Cell><Cell>{row.ageYears} anos</Cell><Cell>{row.speciesAverageAge.toFixed(1)} anos</Cell><Cell>{row.centerName}</Cell>
-              </tr>)}
-            </ReportTable>
-          )}
+          {filterForm}
+          <ReportRows {...reportRequest} load={api.olderAnimals}>
+            {(rows) => (
+              <ReportTable headers={['Animal', 'Espécie', 'Idade', 'Média da espécie', 'Centro']}>
+                {rows.map((row) => <tr key={row.animalId} className={tableRowClass}>
+                  <Cell highlight>{row.animalName} <span className="font-mono text-xs text-[#819caf]">#{row.animalId}</span></Cell>
+                  <Cell>{speciesLabel(row.species)}</Cell><Cell>{row.ageYears} anos</Cell><Cell>{row.speciesAverageAge.toFixed(1)} anos</Cell><Cell>{row.centerName}</Cell>
+                </tr>)}
+              </ReportTable>
+            )}
+          </ReportRows>
         </Panel>
       )}
 
-      {activeReport === 9 && advanced && (
+      {activeReport === 9 && (
         <Panel title="09 · Painel operacional dos centros" detail="Visão com Centro_Adocao, Vinculado_A, Animal e Interesse">
-          <ReportTable headers={['Centro', 'Centro principal', 'Animais', 'Disponíveis', 'Indisponíveis', 'Interesses', 'Último interesse']}>
-            {advanced.centerOperations.map((row) => <tr key={row.centerId} className={tableRowClass}>
-              <Cell highlight>{row.centerName} <span className="font-mono text-xs text-[#819caf]">#{row.centerId}</span></Cell>
-              <Cell>{row.mainCenterName || 'Matriz / sem vínculo'}</Cell><Cell mono>{row.totalAnimals}</Cell><Cell mono>{row.availableAnimals}</Cell>
-              <Cell mono>{row.unavailableAnimals}</Cell><Cell mono>{row.totalInterests}</Cell><Cell>{dateTimeLabel(row.lastInterest)}</Cell>
-            </tr>)}
-          </ReportTable>
+          {filterForm}
+          <ReportRows {...reportRequest} load={api.centerOperations}>
+            {(rows) => (
+              <ReportTable headers={['Centro', 'Centro principal', 'Animais', 'Disponíveis', 'Indisponíveis', 'Interesses', 'Último interesse']}>
+                {rows.map((row) => <tr key={row.centerId} className={tableRowClass}>
+                  <Cell highlight>{row.centerName} <span className="font-mono text-xs text-[#819caf]">#{row.centerId}</span></Cell>
+                  <Cell>{row.mainCenterName || 'Matriz / sem vínculo'}</Cell><Cell mono>{row.totalAnimals}</Cell><Cell mono>{row.availableAnimals}</Cell>
+                  <Cell mono>{row.unavailableAnimals}</Cell><Cell mono>{row.totalInterests}</Cell><Cell>{dateTimeLabel(row.lastInterest)}</Cell>
+                </tr>)}
+              </ReportTable>
+            )}
+          </ReportRows>
         </Panel>
       )}
 
-      {activeReport === 10 && advanced && (
+      {activeReport === 10 && (
         <Panel title="10 · Oferta e demanda por raça" detail="Visão com Raca, Preferencia, Animal e Interesse">
-          <ReportTable headers={['Raça', 'Espécie', 'Preferências', 'Animais', 'Disponíveis', 'Interessados', 'Saldo', 'Situação']}>
-            {advanced.breedSupplyDemand.map((row) => <tr key={row.breedId} className={tableRowClass}>
-              <Cell highlight>{row.breedName} <span className="font-mono text-xs text-[#819caf]">#{row.breedId}</span></Cell>
-              <Cell>{speciesLabel(row.species)}</Cell><Cell mono>{row.preferenceCount}</Cell><Cell mono>{row.totalAnimals}</Cell>
-              <Cell mono>{row.availableAnimals}</Cell><Cell mono>{row.interestedUsers}</Cell><Cell mono>{row.supplyBalance}</Cell><Cell>{row.supplyStatus}</Cell>
-            </tr>)}
-          </ReportTable>
+          {filterForm}
+          <ReportRows {...reportRequest} load={api.breedSupplyDemand}>
+            {(rows) => (
+              <ReportTable headers={['Raça', 'Espécie', 'Preferências', 'Animais', 'Disponíveis', 'Interessados', 'Saldo', 'Situação']}>
+                {rows.map((row) => <tr key={row.breedId} className={tableRowClass}>
+                  <Cell highlight>{row.breedName} <span className="font-mono text-xs text-[#819caf]">#{row.breedId}</span></Cell>
+                  <Cell>{speciesLabel(row.species)}</Cell><Cell mono>{row.preferenceCount}</Cell><Cell mono>{row.totalAnimals}</Cell>
+                  <Cell mono>{row.availableAnimals}</Cell><Cell mono>{row.interestedUsers}</Cell><Cell mono>{row.supplyBalance}</Cell><Cell>{row.supplyStatus}</Cell>
+                </tr>)}
+              </ReportTable>
+            )}
+          </ReportRows>
         </Panel>
       )}
 
@@ -676,6 +687,61 @@ export function AdvancedReportsPage({
           </Panel>
         </div>
       )}
+    </div>
+  )
+}
+
+function loadRecommendations(filters: { userId: number }, signal: AbortSignal) {
+  return api.recommendedAnimals(filters.userId, signal)
+}
+
+function ReportRows<T, Filters>({ filters, catalog, load, emptyMessage, children }: {
+  filters: Filters
+  catalog?: DashboardData
+  load: (filters: Filters, signal: AbortSignal) => Promise<T[]>
+  emptyMessage?: string
+  children: (rows: T[]) => ReactNode
+}) {
+  const [attempt, setAttempt] = useState(0)
+  const [result, setResult] = useState<{
+    filters: Filters
+    catalog: DashboardData | undefined
+    attempt: number
+    rows?: T[]
+    error?: string
+  }>()
+
+  useEffect(() => {
+    const controller = new AbortController()
+    load(filters, controller.signal)
+      .then((rows) => {
+        if (!controller.signal.aborted) setResult({ filters, catalog, attempt, rows })
+      })
+      .catch((cause: unknown) => {
+        const error = cause instanceof Error ? cause.message : 'Não foi possível carregar esta consulta.'
+        if (!controller.signal.aborted) setResult({ filters, catalog, attempt, error })
+      })
+    return () => controller.abort()
+  }, [filters, catalog, load, attempt])
+
+  const current = result && result.filters === filters && result.catalog === catalog && result.attempt === attempt
+    ? result
+    : undefined
+
+  return (
+    <div aria-live="polite" aria-busy={!current}>
+      {!current && <EmptyState>Carregando consulta...</EmptyState>}
+      {current?.error && (
+        <div className="space-y-3 p-4">
+          <ErrorMessage message={current.error} />
+          <button type="button" className={secondaryButtonClass} onClick={() => setAttempt((value) => value + 1)}>
+            Tentar novamente
+          </button>
+        </div>
+      )}
+      {current?.rows && (current.rows.length
+        ? children(current.rows)
+        : <EmptyState>{emptyMessage ?? 'Nenhum resultado para o recorte selecionado.'}</EmptyState>)}
     </div>
   )
 }

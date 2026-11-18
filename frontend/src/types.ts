@@ -164,7 +164,7 @@ export interface BreedAnimalCoverageReport {
   animalId: number | null
   animalName: string | null
   animalSpecies: Species | null
-  matchStatus: string
+  matchStatus: BreedMatchStatus
 }
 
 export interface UnmetPreferenceReport {
@@ -215,16 +215,29 @@ export interface BreedSupplyDemandReport {
   interestedUsers: number
   totalInterests: number
   supplyBalance: number
-  supplyStatus: string
+  supplyStatus: BreedSupplyStatus
 }
 
-export interface AdvancedReports {
-  emptyCenters: EmptyCenterReport[]
-  breedAnimalCoverage: BreedAnimalCoverageReport[]
-  unmetPreferences: UnmetPreferenceReport[]
-  olderAnimals: OlderAnimalReport[]
-  centerOperations: CenterOperationsReport[]
-  breedSupplyDemand: BreedSupplyDemandReport[]
+export type BreedMatchStatus = 'Raca com animal' | 'Raca sem animal' | 'Animal sem raca'
+export type BreedSupplyStatus = 'Deficit de oferta' | 'Superavit de oferta' | 'Oferta equilibrada'
+
+export interface AnimalReportFilters {
+  species?: Species
+  centerId?: number
+  available?: boolean
+}
+
+export interface CenterLocationFilters {
+  city?: string
+  state?: string
+}
+
+export interface ReportFilters extends AnimalReportFilters, CenterLocationFilters {
+  matchStatus?: BreedMatchStatus
+  userId?: number
+  desiredSpecies?: Species
+  breedId?: number
+  supplyStatus?: BreedSupplyStatus
 }
 
 export interface AnimalPriorityReport {

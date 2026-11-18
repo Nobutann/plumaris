@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import br.org.plumaris.adocao.database.DatabaseConstraintException;
+import br.org.plumaris.adocao.web.QueryParameter;
 
 @RestController
 @RequestMapping("/api/animais")
@@ -32,8 +33,12 @@ public class AnimalController {
     }
 
     @GetMapping
-    public List<AnimalResponse> findAll() {
-        return animalRepository.findAll();
+    public List<AnimalResponse> findAll(
+            @RequestParam(required = false) String species,
+            @RequestParam(required = false) String centerId,
+            @RequestParam(required = false) String available) {
+        return animalRepository.findAll(QueryParameter.species("species", species),
+                QueryParameter.positiveId("centerId", centerId), parseAvailability(available));
     }
 
     @GetMapping("/{id}")
@@ -43,13 +48,21 @@ public class AnimalController {
     }
 
     @GetMapping("/resumo-por-especie")
-    public List<AnimalSpeciesSummary> summarizeBySpecies() {
-        return animalRepository.summarizeBySpecies();
+    public List<AnimalSpeciesSummary> summarizeBySpecies(
+            @RequestParam(required = false) String species,
+            @RequestParam(required = false) String centerId,
+            @RequestParam(required = false) String available) {
+        return animalRepository.summarizeBySpecies(QueryParameter.species("species", species),
+                QueryParameter.positiveId("centerId", centerId), parseAvailability(available));
     }
 
     @GetMapping("/faixas-etarias")
-    public List<AnimalAgeGroupSummary> summarizeByAgeGroup() {
-        return animalRepository.summarizeByAgeGroup();
+    public List<AnimalAgeGroupSummary> summarizeByAgeGroup(
+            @RequestParam(required = false) String species,
+            @RequestParam(required = false) String centerId,
+            @RequestParam(required = false) String available) {
+        return animalRepository.summarizeByAgeGroup(QueryParameter.species("species", species),
+                QueryParameter.positiveId("centerId", centerId), parseAvailability(available));
     }
 
     @GetMapping("/recomendados")
@@ -94,6 +107,10 @@ public class AnimalController {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 exception.getStatusCode(), exception.getReason());
         return ResponseEntity.status(exception.getStatusCode()).body(problem);
+    }
+
+    private static Boolean parseAvailability(String value) {
+        return value == null ? null : Boolean.valueOf(QueryParameter.option("available", value, "true", "false"));
     }
 
     private void validateReferences(AnimalRequest request) {
