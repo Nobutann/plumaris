@@ -153,7 +153,9 @@ Os relatórios da Etapa 04 e as rotinas de banco (funções, procedimentos e tri
 - `GET /api/relatorios/logs-auditoria`: lista o histórico gravado na tabela `Log_Auditoria_Animal` pelo trigger `trg_animal_after_update_log`.
 - `POST /api/relatorios/interesses`: registra interesse de um usuário em um animal, validado pelo trigger `trg_interesse_before_insert_validar`.
 
-`GET /api/centros` lista os centros de adoção disponíveis para o cadastro de animais.
+A seção **Centros** gerencia os centros de adoção. `GET /api/centros` lista os centros (incluindo `id` e `name` para o seletor de Animais) e `GET /api/centros/{id}` consulta um centro. `POST /api/centros` recebe, no mínimo, `name`, `email` e `password` (8 a 128 caracteres); `PUT /api/centros/{id}` atualiza os dados sem aceitar senha. Ambas as operações aceitam `description`, `street`, `number`, `neighborhood`, `city`, `state` e `postalCode` como campos opcionais.
+
+O cadastro cria o centro e sua conta na mesma transação; o identificador do centro é o da conta. O e-mail editado é o da conta vinculada, e a senha é armazenada apenas como hash com sal, sem ser retornada pela API. `DELETE /api/centros/{id}` é bloqueado se houver animais ou vínculos com outros centros. A exclusão remove os meios de contato do centro e preserva a conta quando ela também pertence a um usuário.
 
 Para gerenciar animais, a API oferece também `GET /api/animais/{id}`, `POST /api/animais`, `PUT /api/animais/{id}` e `DELETE /api/animais/{id}`. Um corpo mínimo para criação ou alteração é `{"name":"Fido","species":"Cao","available":true,"centerId":32}`. O centro deve existir; `breedId` é opcional e, quando informado, precisa pertencer à mesma espécie. A exclusão de um animal também exclui suas fotos e registros de interesse, conforme as chaves estrangeiras do banco.
 

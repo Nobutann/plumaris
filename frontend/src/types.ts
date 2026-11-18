@@ -40,7 +40,17 @@ export type BreedInput = Pick<Breed, 'name' | 'species'>
 export interface Center {
   id: number
   name: string
+  email: string
+  description: string | null
+  street: string | null
+  number: string | null
+  neighborhood: string | null
+  city: string | null
+  state: string | null
+  postalCode: string | null
 }
+
+export type CenterInput = Omit<Center, 'id'>
 
 export interface UserSummary {
   id: number

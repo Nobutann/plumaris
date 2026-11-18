@@ -3,12 +3,13 @@ import { api } from './api'
 import { ErrorMessage, secondaryButtonClass } from './components/ui'
 import { AnimalsPage } from './pages/AnimalsPage'
 import { BreedsPage } from './pages/BreedsPage'
+import { CentersPage } from './pages/CentersPage'
 import { PreferencesPage } from './pages/PreferencesPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { AdvancedReportsPage } from './pages/AdvancedReportsPage'
 import type { DashboardData } from './types'
 
-type Page = 'dashboard' | 'animals' | 'breeds' | 'reports' | 'preferences'
+type Page = 'dashboard' | 'animals' | 'breeds' | 'reports' | 'preferences' | 'centers'
 
 const navigation: { id: Page; label: string; number: string }[] = [
   { id: 'dashboard', label: 'Painel', number: '01' },
@@ -16,12 +17,14 @@ const navigation: { id: Page; label: string; number: string }[] = [
   { id: 'breeds', label: 'Raças', number: '03' },
   { id: 'reports', label: 'Consultas', number: '04' },
   { id: 'preferences', label: 'Preferências', number: '05' },
+  { id: 'centers', label: 'Centros', number: '06' },
 ]
 
 const pageCopy: Record<Page, { title: string; description: string }> = {
   dashboard: { title: 'Visão geral', description: 'Panorama dos animais e centros de adoção cadastrados.' },
   animals: { title: 'Animais', description: 'Consulte, cadastre e mantenha os registros do catálogo.' },
   breeds: { title: 'Raças', description: 'Gerencie as raças disponíveis para cães e gatos.' },
+  centers: { title: 'Centros de adoção', description: 'Gerencie os centros, seus endereços e e-mails de conta.' },
   preferences: { title: 'Preferências', description: 'Gerencie os critérios de adoção dos usuários.' },
   reports: { title: 'Consultas', description: 'Explore consultas SQL avançadas, visões, funções, procedimentos e auditoria.' },
 }
@@ -133,6 +136,7 @@ function App() {
             {data && page === 'dashboard' && <DashboardPage data={data} onNavigate={navigate} />}
             {data && page === 'animals' && <AnimalsPage animals={data.animals} breeds={data.breeds} centers={data.centers} refresh={refresh} />}
             {data && page === 'breeds' && <BreedsPage breeds={data.breeds} refresh={refresh} />}
+            {data && page === 'centers' && <CentersPage centers={data.centers} refresh={refresh} />}
             {data && page === 'reports' && <AdvancedReportsPage data={data} refresh={refresh} />}
           </div>
 

@@ -12,6 +12,7 @@ import type {
   BreedAnimalCoverageReport,
   BreedSupplyDemandReport,
   Center,
+  CenterInput,
   CenterOperationsReport,
   CompleteAdoptionInput,
   DashboardData,
@@ -105,6 +106,18 @@ export const api = {
 
   deleteAnimal(id: number): Promise<void> {
     return request<void>(`/animais/${id}`, { method: 'DELETE' })
+  },
+
+  createCenter(input: CenterInput & { password: string }): Promise<Center> {
+    return request<Center>('/centros', { method: 'POST', body: JSON.stringify(input) })
+  },
+
+  updateCenter(id: number, input: CenterInput): Promise<Center> {
+    return request<Center>(`/centros/${id}`, { method: 'PUT', body: JSON.stringify(input) })
+  },
+
+  deleteCenter(id: number): Promise<void> {
+    return request<void>(`/centros/${id}`, { method: 'DELETE' })
   },
 
   createBreed(input: BreedInput): Promise<Breed> {
