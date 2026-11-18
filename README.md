@@ -169,6 +169,18 @@ A seção **Preferências** usa as seguintes rotas:
 
 Cada usuário pode ter uma preferência. Para criar ou editar, informe `userId` e, opcionalmente, `desiredSpecies`, `desiredSize`, `minimumAge`, `maximumAge`, `desiredSex`, `desiredColor` e `breedId`. Use `null` ou omita um critério para deixá-lo sem restrição. As idades são em anos completos.
 
+### Estatísticas do dashboard
+
+`GET /api/dashboard/estatisticas` retorna `referenceDate` (data do MySQL), `filters` (valores aplicados, ou `null` quando omitidos), `indicators`, `ageStatistics` e `series`. Exemplo: `/api/dashboard/estatisticas?species=Cao&centerId=32&available=true&startDate=2026-01-01&endDate=2026-03-31`. Todos os filtros são opcionais; `species` aceita `Cao` ou `Gato`, `centerId` deve ser um inteiro positivo e `available` aceita `true` ou `false`. As datas usam `YYYY-MM-DD`; cada limite funciona sozinho. Filtros inválidos retornam `400` com `detail`; sem correspondências, a rota retorna `200`.
+
+- `indicators` inclui totais do estoque, disponíveis e indisponíveis, percentual disponível (0–100, `null` sem animais), centros com animais, `globalRegisteredCenters` (todos os centros cadastrados, sem filtros) e total de interesses.
+- Espécie, centro e disponibilidade recortam o estoque e selecionam os animais pelos seus atributos **atuais** para contar interesses. O período inclui o dia inicial e o dia final inteiros e afeta **apenas** o total e a série mensal de interesses.
+- `series` contém `animalsBySpecies`, `ageGroups` (`0-1`, `2-4`, `5+`, `Unknown`), `animalsByCenter`, `supplyDemandByBreed`, `interestsByMonth` (meses com registros, `YYYY-MM`, em ordem cronológica) e `ageBoxplotBySpecies`.
+- Em `supplyDemandByBreed`, `availableSupply` conta apenas os disponíveis no recorte. `globalExplicitBreedPreferences` conta preferências com vínculo explícito à raça, independentemente de centro, disponibilidade ou período. O filtro de espécie limita quais raças são exibidas; todas as raças dessa espécie (ou do catálogo inteiro, se omitida) aparecem mesmo com oferta e demanda zero.
+- `ageStatistics` conta idades válidas e excluídas, usando anos completos na `referenceDate`. Nascimento ausente ou futuro entra em `Unknown` e não nas medidas. Média, mediana, variância e desvio padrão populacionais usam apenas idades válidas; todas as modas empatadas são retornadas em ordem crescente, ou `[]` se não houver repetição. Os quartis do boxplot interpolam linearmente na posição `(n−1)×p` (`p` = 0,25, 0,50 e 0,75). Com uma idade, os quartis coincidem e a dispersão é zero; sem idades válidas, as medidas numéricas são `null`.
+
+Para incluir os testes JDBC ao rodar `sh ./mvnw test` em `backend`, defina `PLUMARIS_TEST_MYSQL_URL` (por exemplo, `jdbc:mysql://127.0.0.1:3308`), `PLUMARIS_TEST_MYSQL_USER` e `PLUMARIS_TEST_MYSQL_PASSWORD`. Aponte para uma instância MySQL isolada; os testes criam e removem apenas seu próprio banco descartável.
+
 ## Desenvolvimento
 
 O painel mostra gráficos de espécie, disponibilidade e faixas etárias calculados a partir das consultas SQL. As seções **Animais**, **Raças** e **Preferências** permitem cadastro, edição e exclusão; **Consultas** apresenta quinze painéis: as quatro consultas originais, as quatro consultas avançadas, as duas visões gerenciais, as duas funções SQL, os dois procedimentos armazenados e a gestão de interesses e histórico de auditoria dos triggers.
