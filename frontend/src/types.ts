@@ -42,6 +42,28 @@ export interface Center {
   name: string
 }
 
+export interface UserSummary {
+  id: number
+  name: string
+}
+
+export interface PreferenceInput {
+  userId: number
+  desiredSpecies: Species | null
+  desiredSize: Animal['size']
+  minimumAge: number | null
+  maximumAge: number | null
+  desiredSex: Animal['sex']
+  desiredColor: string | null
+  breedId: number | null
+}
+
+export interface Preference extends PreferenceInput {
+  id: number
+  userName: string
+  breedName: string | null
+}
+
 export interface SpeciesSummary {
   species: Species
   total: number

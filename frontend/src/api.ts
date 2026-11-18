@@ -18,10 +18,13 @@ import type {
   EmptyCenterReport,
   InterestInput,
   OlderAnimalReport,
+  Preference,
+  PreferenceInput,
   RedistributeAnimalsInput,
   RedistributionResult,
   SpeciesSummary,
   UnmetPreferenceReport,
+  UserSummary,
 } from './types'
 
 interface ApiProblem {
@@ -114,6 +117,32 @@ export const api = {
 
   deleteBreed(id: number): Promise<void> {
     return request<void>(`/racas/${id}`, { method: 'DELETE' })
+  },
+
+  async loadPreferences() {
+    const [preferences, users, breeds] = await Promise.all([
+      request<Preference[]>('/preferencias'),
+      request<UserSummary[]>('/usuarios'),
+      request<Breed[]>('/racas'),
+    ])
+
+    return { preferences, users, breeds }
+  },
+
+  listPreferences(): Promise<Preference[]> {
+    return request<Preference[]>('/preferencias')
+  },
+
+  createPreference(input: PreferenceInput): Promise<Preference> {
+    return request<Preference>('/preferencias', { method: 'POST', body: JSON.stringify(input) })
+  },
+
+  updatePreference(id: number, input: PreferenceInput): Promise<Preference> {
+    return request<Preference>(`/preferencias/${id}`, { method: 'PUT', body: JSON.stringify(input) })
+  },
+
+  deletePreference(id: number): Promise<void> {
+    return request<void>(`/preferencias/${id}`, { method: 'DELETE' })
   },
 
   animalPriorities(): Promise<AnimalPriorityReport[]> {

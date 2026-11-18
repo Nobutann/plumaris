@@ -4,7 +4,7 @@ Aplicação para consultar cães, gatos e os centros de adoção responsáveis p
 
 O projeto é executado com **Docker Compose**, que inicia MySQL, backend e frontend. A configuração usa o servidor de desenvolvimento do Vite, com atualização automática da interface ao editar o código.
 
-> **Estado:** primeira versão beta (`v0.1.0-beta.1`). O backend possui as quatro consultas originais, quatro consultas avançadas, duas visões gerenciais, duas funções SQL, dois procedimentos armazenados, dois triggers com tabela de auditoria e operações de cadastro, alteração e exclusão de animais e raças. O frontend oferece painel com gráficos, manutenção de animais e raças e visualização ou execução de todos esses recursos.
+> **Estado:** primeira versão beta (`v0.1.0-beta.1`). O backend possui as quatro consultas originais, quatro consultas avançadas, duas visões gerenciais, duas funções SQL, dois procedimentos armazenados, dois triggers com tabela de auditoria e operações de cadastro, alteração e exclusão de animais, raças e preferências. O frontend oferece painel com gráficos, manutenção de animais, raças e preferências e visualização ou execução de todos esses recursos.
 
 ## Estrutura
 
@@ -159,9 +159,17 @@ Para gerenciar animais, a API oferece também `GET /api/animais/{id}`, `POST /ap
 
 Para gerenciar raças, a API oferece `GET /api/racas`, `GET /api/racas/{id}`, `POST /api/racas`, `PUT /api/racas/{id}` e `DELETE /api/racas/{id}`. As requisições de criação e alteração recebem JSON como `{"name":"Corgi","species":"Cao"}`. Os valores aceitos para `species` são `Cao` e `Gato`. Ao excluir uma raça usada por animais ou preferências, os registros permanecem com `idRaca` nulo, conforme as chaves estrangeiras do banco.
 
+A seção **Preferências** usa as seguintes rotas:
+
+- `GET /api/preferencias` e `GET /api/preferencias/{id}` retornam os critérios com o nome do usuário e da raça.
+- `POST /api/preferencias` cadastra uma preferência. `PUT /api/preferencias/{id}` substitui os critérios e `DELETE /api/preferencias/{id}` exclui o registro.
+- `GET /api/usuarios` fornece apenas `id` e `name` para o seletor.
+
+Cada usuário pode ter uma preferência. Para criar ou editar, informe `userId` e, opcionalmente, `desiredSpecies`, `desiredSize`, `minimumAge`, `maximumAge`, `desiredSex`, `desiredColor` e `breedId`. Use `null` ou omita um critério para deixá-lo sem restrição. As idades são em anos completos.
+
 ## Desenvolvimento
 
-O painel mostra gráficos de espécie, disponibilidade e faixas etárias calculados a partir das consultas SQL. As seções **Animais** e **Raças** permitem cadastro, edição e exclusão; **Consultas** apresenta quinze painéis: as quatro consultas originais, as quatro consultas avançadas, as duas visões gerenciais, as duas funções SQL, os dois procedimentos armazenados e a gestão de interesses e histórico de auditoria dos triggers.
+O painel mostra gráficos de espécie, disponibilidade e faixas etárias calculados a partir das consultas SQL. As seções **Animais**, **Raças** e **Preferências** permitem cadastro, edição e exclusão; **Consultas** apresenta quinze painéis: as quatro consultas originais, as quatro consultas avançadas, as duas visões gerenciais, as duas funções SQL, os dois procedimentos armazenados e a gestão de interesses e histórico de auditoria dos triggers.
 
 ### Alterar o backend
 
