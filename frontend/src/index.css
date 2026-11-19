@@ -66,6 +66,85 @@
   --color-danger-ink: #8c1d29;
   --color-danger-soft: #fdeef0;
   --color-danger-line: #f1c4ca;
+
+  /* Papéis semânticos: a barra lateral, as ações preenchidas e os links trocam de valor no tema escuro. */
+  --color-rail: #1a66aa;
+  --color-rail-muted: #d4e6f7;
+  --color-rail-active: #ffffff;
+  --color-rail-active-ink: #0e2a47;
+  --color-rail-active-number: #1a66aa;
+  --color-rail-active-edge: transparent;
+  --color-action: #1a66aa;
+  --color-action-strong: #13528c;
+  --color-on-action: #ffffff;
+  --color-on-action-muted: #d4e6f7;
+  --color-link: #1a66aa;
+  --color-link-strong: #13528c;
+  --color-field-line: var(--color-line-strong);
+
+  /* Séries dos gráficos: o significado é o mesmo nos dois temas. */
+  --color-series-available: var(--color-sea);
+  --color-series-unavailable: var(--color-sand);
+  --color-series-preference: var(--color-teal);
+  --color-series-unknown: var(--color-line-strong);
+
+  --shadow-rest: 0 1px 2px rgb(14 42 71 / 0.12);
+  --shadow-raised: 0 1px 3px rgb(14 42 71 / 0.18);
+  --shadow-selected: 0 2px 6px rgb(26 102 170 / 0.25);
+}
+
+/* Orla à noite: o mar escuro substitui o branco, a areia e o turquesa ganham luz para manter contraste. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --color-ground: #0c1a29;
+  --color-paper: #122436;
+  --color-ink: #e4edf6;
+  --color-muted: #a6b8ca;
+  --color-subtle: #8fa3b7;
+  --color-line: #233a52;
+  --color-line-strong: #3a546f;
+  --color-track: #1a2f45;
+
+  --color-sky: #5ea6e6;
+  --color-sky-strong: #a3cff5;
+  --color-sky-soft: #173352;
+  --color-sky-mist: #21476d;
+  --color-sea: #4b98dd;
+
+  --color-teal: #2bbfb3;
+  --color-teal-ink: #74dbd1;
+  --color-teal-soft: #0f3431;
+  --color-teal-line: #22706a;
+
+  --color-sand: #d6be88;
+  --color-sand-wash: #2a2419;
+  --color-sand-line: #6b5a3a;
+  --color-sand-ink: #e4cd9a;
+
+  --color-danger: #f27a86;
+  --color-danger-ink: #ffb8bf;
+  --color-danger-soft: #3a1820;
+  --color-danger-line: #6f2c37;
+
+  --color-rail: #11365a;
+  --color-rail-muted: #a9c8e6;
+  --color-rail-active: #2a5f92;
+  --color-rail-active-ink: #ffffff;
+  --color-rail-active-number: #c4e1fb;
+  --color-rail-active-edge: #a9c8e6;
+  --color-action: #2a6fb2;
+  --color-action-strong: #1f5f9c;
+  --color-on-action: #ffffff;
+  --color-on-action-muted: #d4e6f7;
+  --color-link: #7ab8f0;
+  --color-link-strong: #a8d1f7;
+  --color-field-line: #56708c;
+  --color-series-unknown: #56708c;
+
+  --shadow-rest: 0 1px 2px rgb(0 0 0 / 0.35);
+  --shadow-raised: 0 1px 3px rgb(0 0 0 / 0.4);
+  --shadow-selected: 0 2px 6px rgb(0 0 0 / 0.45);
 }
 
 :root {
@@ -95,6 +174,12 @@ body {
 }
 
 :where(a, button, summary, select, input, textarea, [tabindex]):focus-visible {
-  outline: 2px solid var(--color-teal);
+  outline: 2px solid var(--color-teal-ink);
   outline-offset: 2px;
+}
+
+.theme-switching *,
+.theme-switching *::before,
+.theme-switching *::after {
+  transition: none !important;
 }

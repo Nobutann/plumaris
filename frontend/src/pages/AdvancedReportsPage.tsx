@@ -262,11 +262,11 @@ export function AdvancedReportsPage({
                 type="button"
                 onClick={() => setActiveReport(report.id)}
                 aria-current={active ? 'page' : undefined}
-                className={`min-h-[88px] rounded-[12px] border px-3.5 py-3 text-left transition-colors ${active ? 'border-sky bg-sky text-white shadow-[0_2px_6px_rgb(26_102_170/0.25)]' : 'border-line bg-paper text-ink hover:border-sky/40 hover:bg-sky-soft'}`}
+                className={`min-h-[88px] rounded-[12px] border px-3.5 py-3 text-left transition-colors ${active ? 'border-action bg-action text-on-action shadow-selected' : 'border-line bg-paper text-ink hover:border-sky/40 hover:bg-sky-soft'}`}
               >
-                <span className={`font-mono text-xs ${active ? 'text-sky-mist' : 'text-sky'}`}>{String(report.id).padStart(2, '0')}</span>
+                <span className={`font-mono text-xs ${active ? 'text-on-action-muted' : 'text-link'}`}>{String(report.id).padStart(2, '0')}</span>
                 <span className="mt-0.5 block text-sm font-semibold">{report.title}</span>
-                <span className={`mt-0.5 block text-xs leading-5 ${active ? 'text-sky-mist' : 'text-muted'}`}>{report.detail}</span>
+                <span className={`mt-0.5 block text-xs leading-5 ${active ? 'text-on-action-muted' : 'text-muted'}`}>{report.detail}</span>
               </button>
             )
           })}

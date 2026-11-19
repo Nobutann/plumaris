@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from './api'
-import { ErrorMessage, RefreshIcon, secondaryButtonClass } from './components/ui'
+import { ErrorMessage, MoonIcon, RefreshIcon, SunIcon, secondaryButtonClass } from './components/ui'
 import { AnimalsPage } from './pages/AnimalsPage'
 import { BreedsPage } from './pages/BreedsPage'
 import { CentersPage } from './pages/CentersPage'
 import { PreferencesPage } from './pages/PreferencesPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { AdvancedReportsPage } from './pages/AdvancedReportsPage'
+import { useTheme } from './theme'
+import type { Theme } from './theme'
 import type { CatalogData, DashboardFilters } from './types'
 
 type Page = 'dashboard' | 'animals' | 'breeds' | 'reports' | 'preferences' | 'centers'
@@ -42,6 +44,7 @@ function App() {
   const refreshPreferences = useRef<(() => void) | null>(null)
   const [preferencesRefreshLocked, setPreferencesRefreshLocked] = useState(true)
   const [connected, setConnected] = useState<boolean | null>(null)
+  const [theme, setTheme] = useTheme()
 
   const refresh = useCallback(() => {
     catalogRequest.current?.abort()
@@ -107,16 +110,16 @@ function App() {
 
   return (
     <div className="min-h-screen bg-ground text-ink lg:flex">
-      <aside className="bg-sky text-white lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-[236px] lg:shrink-0 lg:flex-col">
-        <div className="flex items-center justify-between gap-3 px-5 pt-4 pb-2 lg:block lg:border-b lg:border-white/15 lg:px-6 lg:pt-7 lg:pb-6">
+      <aside className="bg-rail text-white lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-[236px] lg:shrink-0 lg:flex-col">
+        <div className="flex items-center justify-between gap-3 px-5 pt-4 pb-2 lg:block lg:border-b lg:border-white/15 lg:px-6 lg:pt-7 lg:pb-5">
           <div className="flex items-center gap-3">
             <BrandMark />
             <div>
               <span className="block text-xl leading-tight font-bold">Plumaris</span>
-              <span className="block text-xs text-sky-mist">Gestão de adoções</span>
+              <span className="block text-xs text-rail-muted">Gestão de adoções</span>
             </div>
           </div>
-          <span className="rounded-full border border-white/30 px-2 py-0.5 font-mono text-[11px] text-sky-mist lg:mt-4 lg:inline-block">v1.0.0</span>
+          <ThemeToggle theme={theme} onChange={setTheme} />
         </div>
 
         <nav aria-label="Navegação principal" className="flex gap-1 overflow-x-auto px-3 pb-3 lg:block lg:space-y-1 lg:overflow-visible lg:py-4">
@@ -126,20 +129,21 @@ function App() {
               type="button"
               onClick={() => navigate(item.id)}
               aria-current={page === item.id ? 'page' : undefined}
-              className={`flex shrink-0 items-center gap-3 rounded-[10px] px-3 py-2.5 text-left text-[15px] transition-colors focus-visible:outline-white lg:w-full ${page === item.id ? 'bg-paper font-semibold text-ink shadow-[0_1px_3px_rgb(14_42_71/0.18)]' : 'text-white hover:bg-white/12'}`}
+              className={`flex shrink-0 items-center gap-3 rounded-[10px] px-3 py-2.5 text-left text-[15px] transition-colors focus-visible:outline-white lg:w-full ${page === item.id ? 'bg-rail-active font-semibold text-rail-active-ink shadow-raised ring-1 ring-rail-active-edge ring-inset' : 'text-white hover:bg-white/12'}`}
             >
-              <span className={`font-mono text-xs ${page === item.id ? 'text-sky' : 'text-sky-mist'}`}>{item.number}</span>
+              <span className={`font-mono text-xs ${page === item.id ? 'text-rail-active-number' : 'text-rail-muted'}`}>{item.number}</span>
               {item.label}
             </button>
           ))}
         </nav>
 
-        <div className="hidden border-t border-white/15 px-6 py-5 text-xs lg:mt-auto lg:block">
-          {connected !== null && <p role="status" className="mb-2 flex items-center gap-2 font-semibold">
+        <img src="/photos/cao-no-mar.webp" alt="" width={480} height={600} decoding="async"
+          className="mt-auto hidden h-[clamp(9rem,calc(100vh-35rem),19rem)] w-full object-cover object-[50%_35%] lg:[@media(min-height:720px)]:block" />
+        <div className="hidden border-t border-white/15 px-6 py-5 text-xs lg:mt-auto lg:block lg:[@media(min-height:720px)]:mt-0">
+          {connected !== null && <p role="status" className="flex items-center gap-2 font-semibold">
             <span aria-hidden="true" className={`size-2 rounded-full ${connected ? 'bg-teal-line' : 'bg-sand'}`} />
             {connected ? 'API conectada' : 'Aguardando API'}
           </p>}
-          <p className="text-sky-mist">React · Spring Boot · MySQL</p>
         </div>
       </aside>
 
@@ -200,10 +204,50 @@ function App() {
         </div>
 
         <footer className="mx-auto max-w-[1280px] px-5 sm:px-9">
-          <p className="mt-6 border-t border-line py-5 text-xs text-muted">Adoção · Interface de consulta e gerenciamento</p>
+          <div className="mt-8 flex flex-col gap-4 border-t border-line py-6 sm:flex-row sm:items-center sm:gap-5">
+            <div className="flex shrink-0 gap-2">
+              <img src="/photos/cao-no-mar.webp" alt="" width={480} height={600} loading="lazy" decoding="async"
+                className="aspect-[4/3] w-32 rounded-[10px] object-cover object-[50%_35%] lg:[@media(min-height:720px)]:hidden" />
+              <img src="/photos/gato-na-praia.webp" alt="" width={480} height={360} loading="lazy" decoding="async"
+                className="aspect-[4/3] w-32 rounded-[10px] object-cover" />
+            </div>
+            <div className="max-w-[68ch] space-y-1 text-xs leading-5 text-muted">
+              <p className="text-[13px] font-semibold text-ink">Plumaris 1.0.0, gestão de adoções de cães e gatos</p>
+              <p>As fotografias são ilustrativas e não retratam animais cadastrados.</p>
+              <p>
+                Cão no mar: <a className={creditLinkClass} href="https://commons.wikimedia.org/wiki/File:Jack_Russell_Terrier_Eddi_in_the_Sea.JPG">Steve-65</a>,{' '}
+                <a className={creditLinkClass} href="https://creativecommons.org/licenses/by-sa/3.0/deed.pt-br">CC BY-SA 3.0</a>, recortada.
+                Gato na praia: <a className={creditLinkClass} href="https://commons.wikimedia.org/wiki/File:Beach_Cat_(4159138695).jpg">Jennifer C.</a>,{' '}
+                <a className={creditLinkClass} href="https://creativecommons.org/licenses/by/2.0/deed.pt-br">CC BY 2.0</a>, recortada.
+                Ambas via Wikimedia Commons.
+              </p>
+            </div>
+          </div>
         </footer>
       </main>
     </div>
+  )
+}
+
+const creditLinkClass = 'underline decoration-line-strong underline-offset-2 hover:text-link-strong hover:decoration-current'
+
+const themeOptions: { value: Theme; label: string; Icon: typeof SunIcon }[] = [
+  { value: 'light', label: 'Claro', Icon: SunIcon },
+  { value: 'dark', label: 'Escuro', Icon: MoonIcon },
+]
+
+function ThemeToggle({ theme, onChange }: { theme: Theme; onChange: (theme: Theme) => void }) {
+  return (
+    <fieldset className="flex shrink-0 rounded-full border border-white/25 p-0.5 lg:mt-5 lg:w-full">
+      <legend className="sr-only">Tema da interface</legend>
+      {themeOptions.map(({ value, label, Icon }) => (
+        <label key={value} className={`flex min-h-8 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-full px-3 text-xs font-semibold transition-colors has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-white ${theme === value ? 'bg-rail-active text-rail-active-ink shadow-raised ring-1 ring-rail-active-edge ring-inset' : 'text-rail-muted hover:bg-white/12 hover:text-white'}`}>
+          <input type="radio" name="tema" value={value} checked={theme === value} onChange={() => onChange(value)} className="sr-only" />
+          <Icon className="size-3.5" />
+          {label}
+        </label>
+      ))}
+    </fieldset>
   )
 }
 

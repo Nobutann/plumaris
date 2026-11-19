@@ -87,12 +87,20 @@ export function AlertIcon(props: IconProps) {
   return <Icon {...props}><circle cx="10" cy="10" r="7" /><path d="M10 6.5v4M10 13.5v.01" /></Icon>
 }
 
-export const fieldClass = 'w-full rounded-[10px] font-normal border border-line-strong bg-paper px-3 py-2 text-sm text-ink transition-colors placeholder:text-subtle hover:border-sky/50 focus:border-sky focus:ring-2 focus:ring-sky/20 focus:outline-none aria-invalid:border-danger disabled:cursor-not-allowed disabled:bg-track disabled:text-muted'
+export function SunIcon(props: IconProps) {
+  return <Icon {...props}><circle cx="10" cy="10" r="3.25" /><path d="M10 2.75v1.5M10 15.75v1.5M2.75 10h1.5M15.75 10h1.5M4.87 4.87l1.06 1.06M14.07 14.07l1.06 1.06M4.87 15.13l1.06-1.06M14.07 5.93l1.06-1.06" /></Icon>
+}
+
+export function MoonIcon(props: IconProps) {
+  return <Icon {...props}><path d="M16 12.1A6.5 6.5 0 0 1 7.9 4a6.5 6.5 0 1 0 8.1 8.1Z" /></Icon>
+}
+
+export const fieldClass = 'w-full rounded-[10px] font-normal border border-field-line bg-paper px-3 py-2 text-sm text-ink transition-colors placeholder:text-subtle hover:border-sky/50 focus:border-sky focus:ring-2 focus:ring-sky/20 focus:outline-none aria-invalid:border-danger disabled:cursor-not-allowed disabled:bg-track disabled:text-muted'
 export const labelClass = 'block text-[13px] font-semibold text-ink'
-export const primaryButtonClass = 'inline-flex items-center justify-center gap-2 rounded-[10px] border border-sky bg-sky px-4 py-2 text-sm font-semibold text-white shadow-[0_1px_2px_rgb(14_42_71/0.12)] transition-colors hover:border-sky-strong hover:bg-sky-strong active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50'
+export const primaryButtonClass = 'inline-flex items-center justify-center gap-2 rounded-[10px] border border-action bg-action px-4 py-2 text-sm font-semibold text-on-action shadow-rest transition-colors hover:border-action-strong hover:bg-action-strong active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50'
 export const secondaryButtonClass = 'inline-flex items-center justify-center gap-2 rounded-[10px] border border-line-strong bg-paper px-4 py-2 text-sm font-semibold text-ink transition-colors hover:border-sky/50 hover:bg-sky-soft active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50'
-export const editLinkClass = 'mr-1 rounded-md px-2 py-1 text-[13px] font-semibold text-sky hover:bg-sky-soft disabled:cursor-not-allowed disabled:opacity-50'
+export const editLinkClass = 'mr-1 rounded-md px-2 py-1 text-[13px] font-semibold text-link hover:bg-sky-soft hover:text-link-strong disabled:cursor-not-allowed disabled:opacity-50'
 export const deleteLinkClass = 'rounded-md px-2 py-1 text-[13px] font-semibold text-muted hover:bg-danger-soft hover:text-danger focus-visible:text-danger disabled:cursor-not-allowed disabled:opacity-50'
 export const tableClass = 'w-full min-w-[600px] border-collapse text-left text-sm'
-export const tableHeadClass = 'border-y border-line bg-ground text-xs font-semibold tracking-[0.04em] text-muted uppercase'
+export const tableHeadClass = 'border-y border-line bg-ground text-[13px] font-semibold text-muted'
 export const tableRowClass = 'border-b border-line last:border-b-0 transition-colors hover:bg-sky-soft/60'

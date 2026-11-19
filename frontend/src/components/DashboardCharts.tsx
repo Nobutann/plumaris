@@ -8,9 +8,9 @@ type Series = DashboardStatisticsResponse['series']
 const counts = new Intl.NumberFormat('pt-BR')
 const ages = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 })
 const monthFormat = new Intl.DateTimeFormat('pt-BR', { month: 'short', year: 'numeric', timeZone: 'UTC' })
-const sea = 'bg-sea'
-const sand = 'bg-sand'
-const teal = 'bg-teal'
+const sea = 'bg-series-available'
+const sand = 'bg-series-unavailable'
+const teal = 'bg-series-preference'
 
 export function DashboardCharts({ series }: { series: Series }) {
   return (
@@ -73,7 +73,7 @@ function CountColumns({ rows }: { rows: Column[] }) {
           <div key={label} className="min-w-0">
             <div aria-hidden="true" className="flex h-36 flex-col items-center justify-end border-b border-line-strong">
               {unavailable !== undefined && <div className={`w-1/2 max-w-24 rounded-t-[6px] ${sand}`} style={{ height: scaledPercent(unavailable, max) }} />}
-              <div className={`w-1/2 max-w-24 ${unknown ? 'bg-line-strong' : sea} ${unavailable === undefined || unavailable === 0 ? 'rounded-t-[6px]' : ''}`} style={{ height: scaledPercent(available ?? total, max) }} />
+              <div className={`w-1/2 max-w-24 ${unknown ? 'bg-series-unknown' : sea} ${unavailable === undefined || unavailable === 0 ? 'rounded-t-[6px]' : ''}`} style={{ height: scaledPercent(available ?? total, max) }} />
             </div>
             <p className="mt-2 wrap-break-word text-sm font-semibold text-ink">{label}</p>
             <p className="font-mono text-base text-ink">{counts.format(total)}</p>
@@ -218,12 +218,12 @@ function MonthlyInterests({ rows }: { rows: Series['interestsByMonth'] }) {
             {points.length > 1 && (
               <svg className="absolute inset-0 size-full overflow-visible" viewBox="0 0 100 100" preserveAspectRatio="none">
                 <polyline points={points.map(({ x, y }) => `${x},${y}`).join(' ')}
-                  fill="none" stroke="var(--color-sea)" strokeWidth="2.5" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+                  fill="none" stroke="var(--color-series-available)" strokeWidth="2.5" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
               </svg>
             )}
             {points.map(({ month, total, x, y }) => (
               <span key={month} title={`${monthLabel(month)} · ${counts.format(total)}`}
-                className="absolute size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-paper bg-sea shadow-[0_0_0_1px_var(--color-sea)]"
+                className="absolute size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-paper bg-series-available shadow-[0_0_0_1px_var(--color-series-available)]"
                 style={{ left: `${x}%`, top: `${y}%` }} />
             ))}
           </div>
@@ -234,7 +234,7 @@ function MonthlyInterests({ rows }: { rows: Series['interestsByMonth'] }) {
         </div>
       </div>
       <details className="border-t border-line pt-2 text-sm">
-        <summary className="cursor-pointer font-semibold text-sky hover:text-sky-strong">Valores por mês</summary>
+        <summary className="cursor-pointer font-semibold text-link hover:text-link-strong">Valores por mês</summary>
         <table className="mt-2 w-full text-left text-xs">
           <thead className="text-muted"><tr><th scope="col" className="p-2">Mês</th><th scope="col" className="p-2 text-right">Interesses</th></tr></thead>
           <tbody>
@@ -278,7 +278,7 @@ function AgeBoxplot({ row, max }: { row: SpeciesAgeBoxplot; max: number }) {
       <div aria-hidden="true" className="relative mx-1 mt-2 h-10 rounded-md bg-track">
         <div className="absolute top-1/2 border-t-2 border-muted"
           style={{ left: scaledPercent(minimum, max), width: scaledPercent(maximum - minimum, max) }} />
-        <div className="absolute inset-y-1.5 rounded-[4px] border-2 border-sea bg-sky-mist"
+        <div className="absolute inset-y-1.5 rounded-[4px] border-2 border-series-available bg-sky-mist"
           style={{ left: scaledPercent(firstQuartile, max), width: scaledPercent(thirdQuartile - firstQuartile, max) }} />
         {[minimum, maximum].map((age, index) => <span key={index} className="absolute inset-y-3 border-l-2 border-muted"
           style={{ left: scaledPercent(age, max) }} />)}

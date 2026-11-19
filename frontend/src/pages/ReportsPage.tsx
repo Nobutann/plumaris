@@ -76,9 +76,9 @@ export function ReportsPage({ data }: { data: DashboardData }) {
               type="button"
               onClick={() => setActiveReport(report.id)}
               aria-current={activeReport === report.id ? 'page' : undefined}
-              className={`min-h-24 rounded-[12px] border p-4 text-left transition-colors ${activeReport === report.id ? 'border-sky bg-sky text-white' : 'border-line bg-paper text-ink hover:bg-sky-soft'}`}
+              className={`min-h-24 rounded-[12px] border p-4 text-left transition-colors ${activeReport === report.id ? 'border-action bg-action text-on-action' : 'border-line bg-paper text-ink hover:bg-sky-soft'}`}
             >
-              <span className="font-mono text-xs text-sky">0{report.id}</span>
+              <span className={`font-mono text-xs ${activeReport === report.id ? 'text-on-action-muted' : 'text-link'}`}>0{report.id}</span>
               <span className="mt-1 block text-sm font-semibold">{report.title}</span>
               <span className="mt-1 block text-xs leading-5 text-muted">{report.detail}</span>
             </button>

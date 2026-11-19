@@ -190,12 +190,12 @@ export function DashboardPage({ appliedFilters, onApply, refreshVersion, onRefre
         )}
         {data && filters && (
           <>
-            <div className="space-y-0.5 px-1 text-sm text-muted" role="status">
-              <p className="font-semibold text-ink">Filtros aplicados</p>
-              <p>Espécie: {filters.species ? speciesLabel(filters.species) : 'Todas'} · Centro: {selectedCenter ?? centerLabel(filters.centerId)} · Disponibilidade: {availabilityLabel(filters.available)}</p>
-              <p>Período de interesses: {interestPeriod(filters)} · Data de referência: {dateLabel(data.referenceDate)}</p>
-            </div>
-            <DashboardIndicators data={data} />
+            <DashboardIndicators data={data}>
+              <div className="mt-1 space-y-0.5 text-[13px] text-muted" role="status">
+                <p><span className="font-semibold text-ink">Filtros aplicados.</span> Espécie: {filters.species ? speciesLabel(filters.species) : 'Todas'} · Centro: {selectedCenter ?? centerLabel(filters.centerId)} · Disponibilidade: {availabilityLabel(filters.available)}</p>
+                <p>Período de interesses: {interestPeriod(filters)} · Data de referência: {dateLabel(data.referenceDate)}</p>
+              </div>
+            </DashboardIndicators>
             <DashboardCharts series={data.series} />
           </>
         )}
@@ -204,7 +204,7 @@ export function DashboardPage({ appliedFilters, onApply, refreshVersion, onRefre
   )
 }
 
-function DashboardIndicators({ data }: { data: DashboardStatisticsResponse }) {
+function DashboardIndicators({ data, children }: { data: DashboardStatisticsResponse; children: ReactNode }) {
   const { indicators, ageStatistics: ages } = data
 
   function ageMeasure(value: number | null, unit: string) {
@@ -214,7 +214,7 @@ function DashboardIndicators({ data }: { data: DashboardStatisticsResponse }) {
 
   return (
     <>
-      <Panel title="Indicadores">
+      <MetricSection title="Indicadores" detail={children}>
         <div className={metricGridClass}>
           <Metric label="Total de animais" value={counts.format(indicators.totalAnimals)} wide>
             <AvailabilityTide available={indicators.availableAnimals} unavailable={indicators.unavailableAnimals} />
@@ -227,10 +227,10 @@ function DashboardIndicators({ data }: { data: DashboardStatisticsResponse }) {
           <Metric label="Centros cadastrados (global)" value={counts.format(indicators.globalRegisteredCenters)} />
           <Metric label="Interesses no recorte e período" value={counts.format(indicators.totalInterests)} />
         </div>
-      </Panel>
-      <Panel title="Estatísticas de idade" detail={ages.validAgeCount
+      </MetricSection>
+      <MetricSection title="Estatísticas de idade" detail={<p className="mt-0.5 text-[13px] text-muted">{ages.validAgeCount
         ? 'Idades válidas em anos completos no recorte.'
-        : 'As medidas são indefinidas sem idades válidas.'}>
+        : 'As medidas são indefinidas sem idades válidas.'}</p>}>
         <div className={metricGridClass}>
           <Metric label="Média" value={ageMeasure(ages.mean, 'anos')} />
           <Metric label="Mediana" value={ageMeasure(ages.median, 'anos')} />
@@ -241,16 +241,27 @@ function DashboardIndicators({ data }: { data: DashboardStatisticsResponse }) {
           <Metric label="Idades válidas" value={counts.format(ages.validAgeCount)} />
           <Metric label="Idades excluídas" value={counts.format(ages.excludedAgeCount)} />
         </div>
-      </Panel>
+      </MetricSection>
     </>
   )
 }
 
-const metricGridClass = 'grid grid-cols-2 gap-x-6 gap-y-5 px-5 pt-1 pb-5 md:grid-cols-3 xl:grid-cols-4'
+// Os indicadores ficam sobre o fundo, sem caixa: a caixa fica reservada aos filtros e aos gráficos.
+function MetricSection({ title, detail, children }: { title: string; detail: ReactNode; children: ReactNode }) {
+  return (
+    <section className="px-1 pt-3 pb-2">
+      <h2 className="text-lg font-bold text-ink">{title}</h2>
+      {detail}
+      {children}
+    </section>
+  )
+}
+
+const metricGridClass = 'mt-4 grid grid-cols-2 gap-x-6 gap-y-5 md:grid-cols-3 xl:grid-cols-4'
 
 function Metric({ label, value, wide = false, children }: { label: string; value: string; wide?: boolean; children?: ReactNode }) {
   return (
-    <dl className={`min-w-0 border-t border-line pt-3 ${wide ? 'col-span-2' : ''}`}>
+    <dl className={`min-w-0 border-t border-line-strong pt-3 ${wide ? 'col-span-2' : ''}`}>
       <dt className="text-[13px] text-muted">{label}</dt>
       <dd className={`mt-0.5 wrap-break-word font-semibold text-ink tabular-nums ${wide ? 'text-[32px] leading-tight' : 'text-xl leading-snug sm:text-[22px]'}`}>{value}</dd>
       {children}
@@ -263,12 +274,12 @@ function AvailabilityTide({ available, unavailable }: { available: number; unava
   return (
     <dd className="mt-3">
       <div aria-hidden="true" className="flex h-2.5 overflow-hidden rounded-full bg-track">
-        {total > 0 && <div className="bg-sea" style={{ width: `${(available / total) * 100}%` }} />}
-        {total > 0 && <div className="bg-sand" style={{ width: `${(unavailable / total) * 100}%` }} />}
+        {total > 0 && <div className="bg-series-available" style={{ width: `${(available / total) * 100}%` }} />}
+        {total > 0 && <div className="bg-series-unavailable" style={{ width: `${(unavailable / total) * 100}%` }} />}
       </div>
       <p className="mt-1.5 flex flex-wrap justify-between gap-x-3 text-xs text-muted">
-        <span className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="size-2 rounded-full bg-sea" />{counts.format(available)} disponíveis</span>
-        <span className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="size-2 rounded-full bg-sand" />{counts.format(unavailable)} indisponíveis</span>
+        <span className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="size-2 rounded-full bg-series-available" />{counts.format(available)} disponíveis</span>
+        <span className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="size-2 rounded-full bg-series-unavailable" />{counts.format(unavailable)} indisponíveis</span>
       </p>
     </dd>
   )
