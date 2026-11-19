@@ -6,7 +6,12 @@ import {
   EmptyState,
   ErrorMessage,
   Panel,
+  PlusIcon,
+  SuccessMessage,
+  deleteLinkClass,
+  editLinkClass,
   fieldClass,
+  labelClass as sharedLabelClass,
   primaryButtonClass,
   secondaryButtonClass,
   tableClass,
@@ -91,12 +96,12 @@ export function CentersPage({ centers, refresh }: { centers: Center[]; refresh: 
 
   return (
     <div className="space-y-5">
-      {success && <p role="status" className="border border-[#547e68] bg-[#183b34] px-4 py-3 text-sm text-[#b6e1c5]">{success}</p>}
+      {success && <SuccessMessage>{success}</SuccessMessage>}
       {error && !editor && <ErrorMessage message={error} />}
       {editor && (
         <div ref={editorRef} tabIndex={-1} className="outline-none">
           <Panel title={editor === 'new' ? 'Cadastrar centro' : `Editar ${editor.name}`} detail="Campos com * são obrigatórios">
-            {error && <div className="px-4 pt-4"><ErrorMessage message={error} /></div>}
+            {error && <div className="px-5 pt-1 pb-3"><ErrorMessage message={error} /></div>}
             <CenterForm key={editor === 'new' ? 'new' : editor.id} center={editor === 'new' ? null : editor}
               busy={busy} onSave={save} onCancel={() => openEditor(null)} />
           </Panel>
@@ -104,38 +109,52 @@ export function CentersPage({ centers, refresh }: { centers: Center[]; refresh: 
       )}
 
       <Panel title="Centros cadastrados" detail={`${centers.length} registro(s)`}
-        action={<button type="button" disabled={busy || !!editor} onClick={() => openEditor('new')} className={primaryButtonClass}>Novo centro</button>}>
-        {centers.length === 0 ? <EmptyState>Nenhum centro cadastrado.</EmptyState> : (
-          <div className="overflow-x-auto">
+        action={<button type="button" disabled={busy || !!editor} onClick={() => openEditor('new')} className={primaryButtonClass}><PlusIcon /> Novo centro</button>}>
+        {centers.length === 0 ? <EmptyState>Nenhum centro cadastrado.</EmptyState> : (<>
+          <ul className="divide-y divide-line border-t border-line sm:hidden">
+            {centers.map((center) => (
+              <li key={center.id} className="space-y-1.5 px-5 py-4">
+                <p><span className="font-semibold text-ink">{center.name}</span><span className="ml-2 font-mono text-xs text-subtle">#{center.id}</span></p>
+                {center.description && <p className="line-clamp-2 text-xs text-muted">{center.description}</p>}
+                <p className="text-sm break-all text-ink">{center.email}</p>
+                <p className="text-xs text-muted">{formatAddress(center)}</p>
+                <div className="-ml-2 flex gap-1 pt-1">
+                  <button type="button" disabled={busy || !!editor} onClick={() => openEditor(center)} className={editLinkClass}>Editar</button>
+                  <button type="button" disabled={busy || !!editor} onClick={() => void remove(center)} className={deleteLinkClass}>Excluir</button>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <div className="hidden overflow-x-auto sm:block">
             <table className={tableClass}>
               <thead className={tableHeadClass}>
                 <tr>
-                  <th className="px-4 py-2.5">ID</th>
-                  <th className="px-4 py-2.5">Centro</th>
-                  <th className="px-4 py-2.5">E-mail da conta</th>
-                  <th className="px-4 py-2.5">Endereço</th>
-                  <th className="px-4 py-2.5 text-right">Ações</th>
+                  <th className="px-5 py-3">ID</th>
+                  <th className="px-5 py-3">Centro</th>
+                  <th className="px-5 py-3">E-mail da conta</th>
+                  <th className="px-5 py-3">Endereço</th>
+                  <th className="px-5 py-3 text-right">Ações</th>
                 </tr>
               </thead>
               <tbody>
                 {centers.map((center) => (
                   <tr key={center.id} className={tableRowClass}>
-                    <td className="px-4 py-2.5 font-mono text-xs text-[#819caf]">#{center.id}</td>
-                    <td className="px-4 py-2.5 font-medium text-[#b7dbf0]">{center.name}
-                      {center.description && <p className="mt-1 line-clamp-2 max-w-xs wrap-anywhere text-xs font-normal text-[#9bb0bf]">{center.description}</p>}
+                    <td className="px-5 py-3 font-mono text-xs text-subtle">#{center.id}</td>
+                    <td className="px-5 py-3 font-semibold text-ink">{center.name}
+                      {center.description && <p className="mt-1 line-clamp-2 max-w-xs wrap-anywhere text-xs font-normal text-muted">{center.description}</p>}
                     </td>
-                    <td className="px-4 py-2.5 wrap-anywhere">{center.email}</td>
-                    <td className="px-4 py-2.5">{formatAddress(center)}</td>
-                    <td className="whitespace-nowrap px-4 py-2.5 text-right text-xs">
-                      <button type="button" disabled={busy || !!editor} onClick={() => openEditor(center)} className="mr-3 text-[#9fd2ef] hover:underline disabled:opacity-50">Editar</button>
-                      <button type="button" disabled={busy || !!editor} onClick={() => void remove(center)} className="text-[#e6a4aa] hover:underline disabled:opacity-50">Excluir</button>
+                    <td className="px-5 py-3 whitespace-nowrap">{center.email}</td>
+                    <td className="px-5 py-3">{formatAddress(center)}</td>
+                    <td className="whitespace-nowrap px-5 py-3 text-right text-xs">
+                      <button type="button" disabled={busy || !!editor} onClick={() => openEditor(center)} className={editLinkClass}>Editar</button>
+                      <button type="button" disabled={busy || !!editor} onClick={() => void remove(center)} className={deleteLinkClass}>Excluir</button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        )}
+        </>)}
       </Panel>
     </div>
   )
@@ -152,7 +171,7 @@ function CenterForm({ center, busy, onSave, onCancel }: {
   onSave: (input: CenterInput, password: string) => Promise<void>
   onCancel: () => void
 }) {
-  const labelClass = 'block text-xs font-medium text-[#a9c2d2]'
+  const labelClass = sharedLabelClass
   const inputClass = `${fieldClass} mt-1.5`
 
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -173,7 +192,7 @@ function CenterForm({ center, busy, onSave, onCancel }: {
   }
 
   return (
-    <form onSubmit={submit} className="space-y-5 p-4">
+    <form onSubmit={submit} className="space-y-5 px-5 pt-2 pb-5">
       <fieldset disabled={busy} className="grid gap-4 md:grid-cols-2">
         <label className={labelClass}>Nome *
           <input name="name" className={inputClass} defaultValue={center?.name} maxLength={150} required />
@@ -202,7 +221,7 @@ function CenterForm({ center, busy, onSave, onCancel }: {
           <input name="postalCode" className={inputClass} inputMode="numeric" pattern="[0-9]{8}" maxLength={8} defaultValue={center?.postalCode ?? ''} />
         </label>
       </fieldset>
-      <div className="flex flex-wrap gap-2 border-t border-[#29465b] pt-4">
+      <div className="flex flex-wrap gap-2 border-t border-line pt-4">
         <button type="submit" disabled={busy} className={primaryButtonClass}>{busy ? 'Salvando...' : 'Salvar centro'}</button>
         <button type="button" disabled={busy} onClick={onCancel} className={secondaryButtonClass}>Cancelar</button>
       </div>

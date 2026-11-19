@@ -8,7 +8,11 @@ import {
   EmptyState,
   ErrorMessage,
   Panel,
+  PlusIcon,
+  deleteLinkClass,
+  editLinkClass,
   fieldClass,
+  labelClass,
   primaryButtonClass,
   secondaryButtonClass,
   tableClass,
@@ -122,7 +126,7 @@ export function AnimalsPage({ animals, breeds, centers, refresh }: AnimalsPagePr
       {editor && (
         <div ref={editorRef} tabIndex={-1} className="outline-none">
           <Panel title={editor === 'new' ? 'Cadastrar animal' : `Editar ${editor.name}`} detail="Campos marcados com * são obrigatórios">
-            {error && <div className="px-4 pt-4"><ErrorMessage message={error} /></div>}
+            {error && <div className="px-5 pt-1 pb-3"><ErrorMessage message={error} /></div>}
             <AnimalForm
               key={editor === 'new' ? 'new' : editor.id}
               animal={editor === 'new' ? null : editor}
@@ -138,9 +142,9 @@ export function AnimalsPage({ animals, breeds, centers, refresh }: AnimalsPagePr
       <Panel
         title="Animais cadastrados"
         detail={`${filteredAnimals.length} de ${animals.length} registros`}
-        action={<button type="button" onClick={() => openEditor('new')} className={primaryButtonClass}>+ Novo animal</button>}
+        action={<button type="button" onClick={() => openEditor('new')} className={primaryButtonClass}><PlusIcon /> Novo animal</button>}
       >
-        <div className="grid gap-3 border-b border-[#29465b] p-4 md:grid-cols-[1fr_150px_170px]">
+        <div className="grid gap-3 border-y border-sand-line bg-sand-wash px-5 py-4 md:grid-cols-[1fr_200px_200px]">
           <label className="sr-only" htmlFor="animal-search">Buscar animais</label>
           <input id="animal-search" className={fieldClass} placeholder="Buscar por nome, raça, centro ou ID" value={search} onChange={(event) => setSearch(event.target.value)} />
           <label className="sr-only" htmlFor="animal-species">Filtrar por espécie</label>
@@ -156,30 +160,47 @@ export function AnimalsPage({ animals, breeds, centers, refresh }: AnimalsPagePr
             <option value="false">Indisponíveis</option>
           </select>
         </div>
-        {filteredAnimals.length === 0 ? <EmptyState>Nenhum animal corresponde aos filtros.</EmptyState> : (
-          <div className="overflow-x-auto">
+        {filteredAnimals.length === 0 ? <EmptyState>Nenhum animal corresponde aos filtros.</EmptyState> : (<>
+          <ul className="divide-y divide-line border-t border-line sm:hidden">
+            {filteredAnimals.map((animal) => (
+              <li key={animal.id} className="space-y-1.5 px-5 py-4">
+                <div className="flex items-start justify-between gap-3">
+                  <p><span className="font-semibold text-ink">{animal.name}</span><span className="ml-2 font-mono text-xs text-subtle">#{animal.id}</span></p>
+                  <Availability available={animal.available} />
+                </div>
+                <p className="text-sm text-ink">{speciesLabel(animal.species)} · {animal.breedName || 'Raça não informada'}</p>
+                <p className="text-xs text-muted">{sexLabel(animal.sex)} · {sizeLabel(animal.size)} · Nasc.: {dateLabel(animal.birthDate)}</p>
+                <p className="text-xs text-muted">{animal.centerName} <span className="font-mono text-subtle">#{animal.centerId}</span></p>
+                <div className="-ml-2 flex gap-1 pt-1">
+                  <button type="button" disabled={busy} onClick={() => openEditor(animal)} className={editLinkClass}>Editar</button>
+                  <button type="button" disabled={busy} onClick={() => void remove(animal)} className={deleteLinkClass}>Excluir</button>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <div className="hidden overflow-x-auto sm:block">
             <table className={tableClass}>
               <thead className={tableHeadClass}>
-                <tr><th className="px-4 py-2.5">Animal</th><th className="px-4 py-2.5">Espécie / raça</th><th className="px-4 py-2.5">Características</th><th className="px-4 py-2.5">Centro</th><th className="px-4 py-2.5">Situação</th><th className="px-4 py-2.5 text-right">Ações</th></tr>
+                <tr><th className="px-5 py-3">Animal</th><th className="px-5 py-3">Espécie / raça</th><th className="px-5 py-3">Características</th><th className="px-5 py-3">Centro</th><th className="px-5 py-3">Situação</th><th className="px-5 py-3 text-right">Ações</th></tr>
               </thead>
               <tbody>
                 {filteredAnimals.map((animal) => (
                   <tr key={animal.id} className={tableRowClass}>
-                    <td className="px-4 py-2.5"><span className="font-medium text-[#b7dbf0]">{animal.name}</span><span className="ml-2 font-mono text-xs text-[#7895a8]">#{animal.id}</span></td>
-                    <td className="px-4 py-2.5">{speciesLabel(animal.species)}<div className="text-xs text-[#819caf]">{animal.breedName || 'Raça não informada'}</div></td>
-                    <td className="px-4 py-2.5">{sexLabel(animal.sex)} · {sizeLabel(animal.size)}<div className="text-xs text-[#819caf]">Nasc.: {dateLabel(animal.birthDate)}</div></td>
-                    <td className="px-4 py-2.5">{animal.centerName}<div className="font-mono text-xs text-[#819caf]">#{animal.centerId}</div></td>
-                    <td className="px-4 py-2.5"><Availability available={animal.available} /></td>
-                    <td className="whitespace-nowrap px-4 py-2.5 text-right text-xs">
-                      <button type="button" disabled={busy} onClick={() => openEditor(animal)} className="mr-3 text-[#9fd2ef] hover:underline disabled:opacity-50">Editar</button>
-                      <button type="button" disabled={busy} onClick={() => void remove(animal)} className="text-[#e6a4aa] hover:underline disabled:opacity-50">Excluir</button>
+                    <td className="px-5 py-3"><span className="font-semibold text-ink">{animal.name}</span><span className="ml-2 font-mono text-xs text-subtle">#{animal.id}</span></td>
+                    <td className="px-5 py-3">{speciesLabel(animal.species)}<div className="text-xs text-subtle">{animal.breedName || 'Raça não informada'}</div></td>
+                    <td className="px-5 py-3">{sexLabel(animal.sex)} · {sizeLabel(animal.size)}<div className="text-xs text-subtle">Nasc.: {dateLabel(animal.birthDate)}</div></td>
+                    <td className="px-5 py-3">{animal.centerName}<div className="font-mono text-xs text-subtle">#{animal.centerId}</div></td>
+                    <td className="px-5 py-3"><Availability available={animal.available} /></td>
+                    <td className="whitespace-nowrap px-5 py-3 text-right text-xs">
+                      <button type="button" disabled={busy} onClick={() => openEditor(animal)} className={editLinkClass}>Editar</button>
+                      <button type="button" disabled={busy} onClick={() => void remove(animal)} className={deleteLinkClass}>Excluir</button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        )}
+        </>)}
       </Panel>
 
     </div>
@@ -219,54 +240,54 @@ function AnimalForm({ animal, breeds, centers, busy, onCancel, onSave }: {
   }
 
   return (
-    <form onSubmit={submit} className="space-y-5 p-4">
+    <form onSubmit={submit} className="space-y-5 px-5 pt-2 pb-5">
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <label className="block text-xs font-medium text-[#a9c2d2]">Nome *
+        <label className={labelClass}>Nome *
           <input className={`${fieldClass} mt-1.5`} value={draft.name} onChange={(event) => update('name', event.target.value)} maxLength={100} required />
         </label>
-        <label className="block text-xs font-medium text-[#a9c2d2]">Espécie *
+        <label className={labelClass}>Espécie *
           <select className={`${fieldClass} mt-1.5`} value={draft.species} onChange={(event) => setDraft((current) => ({ ...current, species: event.target.value as Species, breedId: '' }))}>
             <option value="Cao">Cão</option><option value="Gato">Gato</option>
           </select>
         </label>
-        <label className="block text-xs font-medium text-[#a9c2d2]">Raça
+        <label className={labelClass}>Raça
           <select className={`${fieldClass} mt-1.5`} value={draft.breedId} onChange={(event) => update('breedId', event.target.value)}>
             <option value="">Não informada</option>
             {matchingBreeds.map((breed) => <option key={breed.id} value={breed.id}>{breed.name}</option>)}
           </select>
         </label>
-        <label className="block text-xs font-medium text-[#a9c2d2]">Centro de adoção *
+        <label className={labelClass}>Centro de adoção *
           <select className={`${fieldClass} mt-1.5`} value={draft.centerId} onChange={(event) => update('centerId', event.target.value)} required>
             <option value="">Selecione um centro</option>
             {centers.map((center) => <option key={center.id} value={center.id}>{center.name} (#{center.id})</option>)}
           </select>
         </label>
-        <label className="block text-xs font-medium text-[#a9c2d2]">Data de nascimento
+        <label className={labelClass}>Data de nascimento
           <input className={`${fieldClass} mt-1.5`} type="date" max={new Date().toISOString().slice(0, 10)} value={draft.birthDate} onChange={(event) => update('birthDate', event.target.value)} />
         </label>
-        <label className="block text-xs font-medium text-[#a9c2d2]">Sexo
+        <label className={labelClass}>Sexo
           <select className={`${fieldClass} mt-1.5`} value={draft.sex} onChange={(event) => update('sex', event.target.value)}>
             <option value="">Não informado</option><option value="Macho">Macho</option><option value="Femea">Fêmea</option>
           </select>
         </label>
-        <label className="block text-xs font-medium text-[#a9c2d2]">Porte
+        <label className={labelClass}>Porte
           <select className={`${fieldClass} mt-1.5`} value={draft.size} onChange={(event) => update('size', event.target.value)}>
             <option value="">Não informado</option><option value="Pequeno">Pequeno</option><option value="Medio">Médio</option><option value="Grande">Grande</option>
           </select>
         </label>
-        <label className="block text-xs font-medium text-[#a9c2d2]">Cor
+        <label className={labelClass}>Cor
           <input className={`${fieldClass} mt-1.5`} value={draft.color} onChange={(event) => update('color', event.target.value)} maxLength={50} />
         </label>
-        <label className="block text-xs font-medium text-[#a9c2d2]">Situação *
+        <label className={labelClass}>Situação *
           <select className={`${fieldClass} mt-1.5`} value={String(draft.available)} onChange={(event) => update('available', event.target.value === 'true')}>
             <option value="true">Disponível</option><option value="false">Indisponível</option>
           </select>
         </label>
       </div>
-      <label className="block text-xs font-medium text-[#a9c2d2]">Descrição
+      <label className={labelClass}>Descrição
         <textarea className={`${fieldClass} mt-1.5 min-h-24 resize-y`} value={draft.description} onChange={(event) => update('description', event.target.value)} />
       </label>
-      <div className="flex flex-wrap gap-2 border-t border-[#29465b] pt-4">
+      <div className="flex flex-wrap gap-2 border-t border-line pt-4">
         <button type="submit" disabled={busy} className={primaryButtonClass}>{busy ? 'Salvando...' : 'Salvar animal'}</button>
         <button type="button" disabled={busy} onClick={onCancel} className={secondaryButtonClass}>Cancelar</button>
       </div>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
+import { Children, cloneElement, isValidElement, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import type { FormEvent, ReactNode, Ref } from 'react'
 import { api } from '../api'
 import { ReportFilterForm } from './ReportFilterForm'
@@ -16,7 +16,10 @@ import {
   EmptyState,
   ErrorMessage,
   Panel,
+  RefreshIcon,
+  SuccessMessage,
   fieldClass,
+  labelClass,
   primaryButtonClass,
   secondaryButtonClass,
   tableClass,
@@ -250,25 +253,28 @@ export function AdvancedReportsPage({
   return (
     <div className="space-y-5">
       <Panel title="Consultas SQL" detail="Consultas, visões gerenciais, funções, procedimentos armazenados e auditoria">
-        <div className="grid gap-px bg-[#2b4961] sm:grid-cols-2 xl:grid-cols-5">
-          {reports.map((report) => (
-            <button
-              key={report.id}
-              type="button"
-              onClick={() => setActiveReport(report.id)}
-              aria-current={activeReport === report.id ? 'page' : undefined}
-              className={`min-h-24 p-4 text-left transition-colors ${activeReport === report.id ? 'bg-[#244562] text-[#e7f3fb]' : 'bg-[#112438] text-[#9bb5c6] hover:bg-[#1b344a]'}`}
-            >
-              <span className="font-mono text-xs text-[#80bddd]">{String(report.id).padStart(2, '0')}</span>
-              <span className="mt-1 block text-sm font-semibold">{report.title}</span>
-              <span className="mt-1 block text-xs leading-5 text-[#8faabc]">{report.detail}</span>
-            </button>
-          ))}
+        <div className="grid gap-2 px-5 pb-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          {reports.map((report) => {
+            const active = activeReport === report.id
+            return (
+              <button
+                key={report.id}
+                type="button"
+                onClick={() => setActiveReport(report.id)}
+                aria-current={active ? 'page' : undefined}
+                className={`min-h-[88px] rounded-[12px] border px-3.5 py-3 text-left transition-colors ${active ? 'border-sky bg-sky text-white shadow-[0_2px_6px_rgb(26_102_170/0.25)]' : 'border-line bg-paper text-ink hover:border-sky/40 hover:bg-sky-soft'}`}
+              >
+                <span className={`font-mono text-xs ${active ? 'text-sky-mist' : 'text-sky'}`}>{String(report.id).padStart(2, '0')}</span>
+                <span className="mt-0.5 block text-sm font-semibold">{report.title}</span>
+                <span className={`mt-0.5 block text-xs leading-5 ${active ? 'text-sky-mist' : 'text-muted'}`}>{report.detail}</span>
+              </button>
+            )
+          })}
         </div>
       </Panel>
 
       <div aria-live="polite">
-        {refreshing && <p className="text-sm text-[#9bb5c6]">Atualizando dados...</p>}
+        {refreshing && <p className="text-sm text-muted">Atualizando dados...</p>}
         {refreshError && (
           <div className="space-y-3">
             <ErrorMessage message={refreshError} />
@@ -320,13 +326,13 @@ export function AdvancedReportsPage({
 
       {activeReport === 4 && (
         <Panel title="04 · Recomendações" detail="Animais disponíveis que atendem às preferências do usuário informado">
-          <form onSubmit={searchRecommendations} className="flex flex-wrap items-end gap-3 border-b border-[#29465b] p-4">
-            <label className="block w-48 text-xs font-medium text-[#a9c2d2]">ID do usuário
+          <form onSubmit={searchRecommendations} className="flex flex-wrap items-end gap-3 border-y border-sand-line bg-sand-wash px-5 py-4">
+            <label className={`${labelClass} w-48`}>ID do usuário
               <input className={`${fieldClass} mt-1.5`} type="number" min="1" step="1" max="2147483647" required value={recommendationUserId} onChange={(event) => setRecommendationUserId(event.target.value)} />
             </label>
             <button type="submit" className={primaryButtonClass}>Buscar recomendações</button>
           </form>
-          <p className="px-4 pt-3 text-xs text-[#a9c2d2]">Usuário consultado · #{recommendation.userId}</p>
+          <p className="px-5 pt-3 text-xs text-muted">Usuário consultado · #{recommendation.userId}</p>
           <ReportRows reloadRef={reloadRows} {...reportRequest} filters={recommendation} load={loadRecommendations}
             emptyMessage="Nenhum animal corresponde às preferências deste usuário.">
             {(animals) => <AnimalResults animals={animals} />}
@@ -375,7 +381,7 @@ export function AdvancedReportsPage({
             {(rows) => (
               <ReportTable headers={['Usuário', 'E-mail', 'Preferência', 'Idade desejada']}>
                 {rows.map((row) => <tr key={row.userId} className={tableRowClass}>
-                  <Cell highlight>{row.userName} <span className="font-mono text-xs text-[#819caf]">#{row.userId}</span></Cell>
+                  <Cell highlight>{row.userName} <span className="font-mono text-xs text-subtle">#{row.userId}</span></Cell>
                   <Cell>{row.email}</Cell><Cell>{preferenceLabel(row)}</Cell><Cell>{agePreferenceLabel(row)}</Cell>
                 </tr>)}
               </ReportTable>
@@ -391,7 +397,7 @@ export function AdvancedReportsPage({
             {(rows) => (
               <ReportTable headers={['Animal', 'Espécie', 'Idade', 'Média da espécie', 'Centro']}>
                 {rows.map((row) => <tr key={row.animalId} className={tableRowClass}>
-                  <Cell highlight>{row.animalName} <span className="font-mono text-xs text-[#819caf]">#{row.animalId}</span></Cell>
+                  <Cell highlight>{row.animalName} <span className="font-mono text-xs text-subtle">#{row.animalId}</span></Cell>
                   <Cell>{speciesLabel(row.species)}</Cell><Cell>{row.ageYears} anos</Cell><Cell>{row.speciesAverageAge.toFixed(1)} anos</Cell><Cell>{row.centerName}</Cell>
                 </tr>)}
               </ReportTable>
@@ -407,7 +413,7 @@ export function AdvancedReportsPage({
             {(rows) => (
               <ReportTable headers={['Centro', 'Centro principal', 'Animais', 'Disponíveis', 'Indisponíveis', 'Interesses', 'Último interesse']}>
                 {rows.map((row) => <tr key={row.centerId} className={tableRowClass}>
-                  <Cell highlight>{row.centerName} <span className="font-mono text-xs text-[#819caf]">#{row.centerId}</span></Cell>
+                  <Cell highlight>{row.centerName} <span className="font-mono text-xs text-subtle">#{row.centerId}</span></Cell>
                   <Cell>{row.mainCenterName || 'Matriz / sem vínculo'}</Cell><Cell mono>{row.totalAnimals}</Cell><Cell mono>{row.availableAnimals}</Cell>
                   <Cell mono>{row.unavailableAnimals}</Cell><Cell mono>{row.totalInterests}</Cell><Cell>{dateTimeLabel(row.lastInterest)}</Cell>
                 </tr>)}
@@ -424,7 +430,7 @@ export function AdvancedReportsPage({
             {(rows) => (
               <ReportTable headers={['Raça', 'Espécie', 'Preferências', 'Animais', 'Disponíveis', 'Interessados', 'Saldo', 'Situação']}>
                 {rows.map((row) => <tr key={row.breedId} className={tableRowClass}>
-                  <Cell highlight>{row.breedName} <span className="font-mono text-xs text-[#819caf]">#{row.breedId}</span></Cell>
+                  <Cell highlight>{row.breedName} <span className="font-mono text-xs text-subtle">#{row.breedId}</span></Cell>
                   <Cell>{speciesLabel(row.species)}</Cell><Cell mono>{row.preferenceCount}</Cell><Cell mono>{row.totalAnimals}</Cell>
                   <Cell mono>{row.availableAnimals}</Cell><Cell mono>{row.interestedUsers}</Cell><Cell mono>{row.supplyBalance}</Cell><Cell>{row.supplyStatus}</Cell>
                 </tr>)}
@@ -465,13 +471,13 @@ export function AdvancedReportsPage({
           title="12 · Índice de compatibilidade por usuário"
           detail="Pontuação de 0 a 100 calculada pela função fn_pontuacao_compatibilidade conforme as preferências cadastradas"
         >
-          <form onSubmit={searchCompatibility} className="flex flex-wrap items-end gap-3 border-b border-[#29465b] p-4">
-            <label className="block w-48 text-xs font-medium text-[#a9c2d2]">ID do usuário
+          <form onSubmit={searchCompatibility} className="flex flex-wrap items-end gap-3 border-y border-sand-line bg-sand-wash px-5 py-4">
+            <label className={`${labelClass} w-48`}>ID do usuário
               <input className={`${fieldClass} mt-1.5`} type="number" min="1" step="1" max="2147483647" required value={compatUserId} onChange={(event) => setCompatUserId(event.target.value)} />
             </label>
             <button type="submit" className={primaryButtonClass}>Calcular compatibilidade</button>
           </form>
-          <p className="px-4 pt-3 text-xs text-[#a9c2d2]">Usuário consultado · #{compatibility.userId}</p>
+          <p className="px-5 pt-3 text-xs text-muted">Usuário consultado · #{compatibility.userId}</p>
           <ReportRows reloadRef={reloadRows} {...reportRequest} filters={compatibility} load={loadCompatibility}
             emptyMessage="Nenhum animal disponível para avaliação.">
             {(rows) => (
@@ -500,8 +506,8 @@ export function AdvancedReportsPage({
           title="13 · Conclusão de adoção"
           detail="Procedimento sp_concluir_adocao_animal para vincular o adotante e atualizar a disponibilidade do animal"
         >
-          <form onSubmit={(event) => void handleCompleteAdoption(event)} className="flex flex-wrap items-end gap-3 border-b border-[#29465b] p-4">
-            <label className="block w-64 text-xs font-medium text-[#a9c2d2]">Animal
+          <form onSubmit={(event) => void handleCompleteAdoption(event)} className="flex flex-wrap items-end gap-3 border-y border-sand-line bg-sand-wash px-5 py-4">
+            <label className={`${labelClass} w-64`}>Animal
               <select className={`${fieldClass} mt-1.5`} value={adoptAnimalId} onChange={(event) => setAdoptAnimalId(event.target.value)}>
                 {data.animals.map((animal) => (
                   <option key={animal.id} value={animal.id}>
@@ -510,7 +516,7 @@ export function AdvancedReportsPage({
                 ))}
               </select>
             </label>
-            <label className="block w-48 text-xs font-medium text-[#a9c2d2]">ID do usuário adotante
+            <label className={`${labelClass} w-48`}>ID do usuário adotante
               <input className={`${fieldClass} mt-1.5`} type="number" min="1" step="1" required value={adoptUserId} onChange={(event) => setAdoptUserId(event.target.value)} />
             </label>
             <button type="submit" disabled={adoptSubmitting} className={primaryButtonClass}>
@@ -518,11 +524,11 @@ export function AdvancedReportsPage({
             </button>
           </form>
           <div aria-live="polite">
-            {adoptError && <div className="p-4"><ErrorMessage message={adoptError} /></div>}
+            {adoptError && <div className="px-5 py-4"><ErrorMessage message={adoptError} /></div>}
             {!adoptError && !adoptResult && (
               <EmptyState>Selecione um animal disponível e informe o ID do adotante para registrar a adoção.</EmptyState>
             )}
-            {adoptResult && <p className="px-4 py-3 text-sm text-[#c8f0db]">Adoção concluída.</p>}
+            {adoptResult && <div className="px-5 pt-4 pb-3"><SuccessMessage>Adoção concluída.</SuccessMessage></div>}
             {adoptResult && (
               <ReportTable headers={['ID', 'Animal', 'Espécie', 'Centro', 'Situação', 'Descrição atualizada']}>
                 <tr className={tableRowClass}>
@@ -544,8 +550,8 @@ export function AdvancedReportsPage({
           title="14 · Redistribuição de animais na rede"
           detail="Procedimento sp_redistribuir_animais_rede com cursor para alocar animais nas unidades vinculadas de menor ocupação"
         >
-          <form onSubmit={(event) => void handleRedistribute(event)} className="flex flex-wrap items-end gap-3 border-b border-[#29465b] p-4">
-            <label className="block w-72 text-xs font-medium text-[#a9c2d2]">Centro de origem
+          <form onSubmit={(event) => void handleRedistribute(event)} className="flex flex-wrap items-end gap-3 border-y border-sand-line bg-sand-wash px-5 py-4">
+            <label className={`${labelClass} w-72`}>Centro de origem
               <select className={`${fieldClass} mt-1.5`} value={sourceCenterId} onChange={(event) => setSourceCenterId(event.target.value)}>
                 {data.centers.map((center) => (
                   <option key={center.id} value={center.id}>
@@ -554,7 +560,7 @@ export function AdvancedReportsPage({
                 ))}
               </select>
             </label>
-            <label className="block w-52 text-xs font-medium text-[#a9c2d2]">Limite por unidade
+            <label className={`${labelClass} w-52`}>Limite por unidade
               <input className={`${fieldClass} mt-1.5`} type="number" min="1" step="1" required value={maxPerUnit} onChange={(event) => setMaxPerUnit(event.target.value)} />
             </label>
             <button type="submit" disabled={redistributeSubmitting} className={primaryButtonClass}>
@@ -562,11 +568,11 @@ export function AdvancedReportsPage({
             </button>
           </form>
           <div aria-live="polite">
-            {redistributeError && <div className="p-4"><ErrorMessage message={redistributeError} /></div>}
+            {redistributeError && <div className="px-5 py-4"><ErrorMessage message={redistributeError} /></div>}
             {!redistributeError && !redistributeResult && (
               <EmptyState>Selecione o centro de origem e o limite de ocupação por unidade para iniciar a redistribuição.</EmptyState>
             )}
-            {redistributeResult && <p className="px-4 py-3 text-sm text-[#c8f0db]">Redistribuição concluída.</p>}
+            {redistributeResult && <div className="px-5 pt-4 pb-3"><SuccessMessage>Redistribuição concluída.</SuccessMessage></div>}
             {redistributeResult && (
               <ReportTable headers={['Centro de origem', 'Matriz da rede', 'Limite por unidade', 'Animais transferidos', 'Restantes na origem']}>
                 <tr className={tableRowClass}>
@@ -588,11 +594,11 @@ export function AdvancedReportsPage({
             title="15 · Registro de interesse"
             detail="Manifestação de interesse validada pelo trigger trg_interesse_before_insert_validar"
           >
-            <form onSubmit={(event) => void handleRegisterInterest(event)} className="flex flex-wrap items-end gap-3 border-b border-[#29465b] p-4">
-              <label className="block w-48 text-xs font-medium text-[#a9c2d2]">ID do usuário
+            <form onSubmit={(event) => void handleRegisterInterest(event)} className="flex flex-wrap items-end gap-3 border-y border-sand-line bg-sand-wash px-5 py-4">
+              <label className={`${labelClass} w-48`}>ID do usuário
                 <input className={`${fieldClass} mt-1.5`} type="number" min="1" step="1" required value={interestUserId} onChange={(event) => setInterestUserId(event.target.value)} />
               </label>
-              <label className="block w-72 text-xs font-medium text-[#a9c2d2]">Animal
+              <label className={`${labelClass} w-72`}>Animal
                 <select className={`${fieldClass} mt-1.5`} value={interestAnimalId} onChange={(event) => setInterestAnimalId(event.target.value)}>
                   {data.animals.map((animal) => (
                     <option key={animal.id} value={animal.id}>
@@ -606,13 +612,9 @@ export function AdvancedReportsPage({
               </button>
             </form>
             {(interestError || interestSuccess) && (
-              <div className="p-4" aria-live="polite">
+              <div className="px-5 py-4" aria-live="polite">
                 {interestError && <ErrorMessage message={interestError} />}
-                {interestSuccess && (
-                  <div className="border border-[#386b52] bg-[#162f28] px-4 py-3 text-sm text-[#c8f0db]">
-                    {interestSuccess}
-                  </div>
-                )}
+                {interestSuccess && <SuccessMessage>{interestSuccess}</SuccessMessage>}
               </div>
             )}
           </Panel>
@@ -626,7 +628,7 @@ export function AdvancedReportsPage({
                 onClick={() => void reloadReportData()}
                 className={secondaryButtonClass}
               >
-                ↻ Atualizar histórico
+                <RefreshIcon /> Atualizar histórico
               </button>
             }
           >
@@ -636,7 +638,7 @@ export function AdvancedReportsPage({
                   {rows.map((log) => (
                     <tr key={log.logId} className={tableRowClass}>
                       <Cell mono>#{log.logId}</Cell>
-                      <Cell highlight>{log.animalName} <span className="font-mono text-xs text-[#819caf]">#{log.animalId}</span></Cell>
+                      <Cell highlight>{log.animalName} <span className="font-mono text-xs text-subtle">#{log.animalId}</span></Cell>
                       <Cell mono>{log.eventType}</Cell>
                       <Cell mono>{log.previousAvailability ? 'Disponível' : 'Indisponível'} → {log.newAvailability ? 'Disponível' : 'Indisponível'}</Cell>
                       <Cell mono>#{log.previousCenterId} → #{log.newCenterId}</Cell>
@@ -715,7 +717,7 @@ function ReportRows<T, Filters>({ filters, load, reloadRef, onRetry, emptyMessag
     <div aria-live="polite" aria-busy={!current}>
       {!current && <EmptyState>Carregando consulta...</EmptyState>}
       {current?.error && (
-        <div className="space-y-3 p-4">
+        <div className="space-y-3 px-5 pt-1 pb-5">
           <ErrorMessage message={current.error} />
           <button type="button" className={secondaryButtonClass} onClick={onRetry}>
             Tentar novamente
@@ -734,24 +736,39 @@ function AnimalResults({ animals }: { animals: Animal[] }) {
     <ReportTable headers={['ID', 'Animal', 'Espécie', 'Raça', 'Centro de adoção', 'Situação']}>
       {animals.map((animal) => <tr key={animal.id} className={tableRowClass}>
         <Cell mono>#{animal.id}</Cell><Cell highlight>{animal.name}</Cell><Cell>{speciesLabel(animal.species)}</Cell><Cell>{animal.breedName || '—'}</Cell>
-        <Cell>{animal.centerName} <span className="font-mono text-xs text-[#819caf]">#{animal.centerId}</span></Cell>
+        <Cell>{animal.centerName} <span className="font-mono text-xs text-subtle">#{animal.centerId}</span></Cell>
         <Cell><Availability available={animal.available} /></Cell>
       </tr>)}
     </ReportTable>
   )
 }
 
+type RowProps = { className?: string; children?: ReactNode }
+type CellProps = { children: ReactNode; mono?: boolean; highlight?: boolean; label?: string }
+
+// Below the sm breakpoint each row becomes a stacked record whose cells carry their column header as a label.
 function ReportTable({ headers, children }: { headers: string[], children: ReactNode }) {
+  const rows = Children.map(children, (row) => {
+    if (!isValidElement<RowProps>(row)) return row
+    const cells = Children.map(row.props.children, (cell, index) =>
+      isValidElement<CellProps>(cell) ? cloneElement(cell, { label: headers[index] }) : cell)
+    return cloneElement(row, { className: `${row.props.className ?? ''} max-sm:block max-sm:px-5 max-sm:py-3` }, cells)
+  })
+
   return (
-    <div className="overflow-x-auto"><table className={tableClass}>
-      <thead className={tableHeadClass}><tr>{headers.map((header) => <th key={header} className="px-4 py-2.5">{header}</th>)}</tr></thead>
-      <tbody>{children}</tbody>
+    <div className="border-t border-line sm:overflow-x-auto sm:border-t-0"><table className={`${tableClass} max-sm:block max-sm:min-w-0`}>
+      <thead className={`${tableHeadClass} max-sm:hidden`}><tr>{headers.map((header) => <th key={header} className="px-5 py-3">{header}</th>)}</tr></thead>
+      <tbody className="max-sm:block">{rows}</tbody>
     </table></div>
   )
 }
 
-function Cell({ children, mono = false, highlight = false }: { children: ReactNode, mono?: boolean, highlight?: boolean }) {
-  return <td className={`px-4 py-2.5 ${mono ? 'font-mono text-xs' : ''} ${highlight ? 'font-medium text-[#b7dbf0]' : ''}`}>{children}</td>
+function Cell({ children, mono = false, highlight = false, label }: CellProps) {
+  return (
+    <td data-label={label} className={`px-5 py-3 max-sm:flex max-sm:items-baseline max-sm:justify-between max-sm:gap-4 max-sm:px-0 max-sm:py-1 max-sm:text-right max-sm:before:shrink-0 max-sm:before:text-left max-sm:before:font-sans max-sm:before:text-xs max-sm:before:font-normal max-sm:before:text-muted max-sm:before:content-[attr(data-label)] ${mono ? 'font-mono text-xs' : ''} ${highlight ? 'font-semibold text-ink' : ''}`}>
+      {children}
+    </td>
+  )
 }
 
 function preferenceLabel(row: UnmetPreferenceReport): string {

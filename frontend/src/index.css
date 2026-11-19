@@ -1,13 +1,100 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "Atkinson Hyperlegible Next";
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url("/fonts/atkinson-hyperlegible-next-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Atkinson Hyperlegible Next";
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url("/fonts/atkinson-hyperlegible-next-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Atkinson Hyperlegible Mono";
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url("/fonts/atkinson-hyperlegible-mono-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Atkinson Hyperlegible Mono";
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url("/fonts/atkinson-hyperlegible-mono-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@theme {
+  --font-sans: "Atkinson Hyperlegible Next", system-ui, sans-serif;
+  --font-mono: "Atkinson Hyperlegible Mono", ui-monospace, monospace;
+
+  --color-ground: #f5f8fb;
+  --color-paper: #ffffff;
+  --color-ink: #0e2a47;
+  --color-muted: #4c6176;
+  --color-subtle: #5d7185;
+  --color-line: #dbe4ed;
+  --color-line-strong: #b9c8d6;
+  --color-track: #edf2f7;
+
+  --color-sky: #1a66aa;
+  --color-sky-strong: #13528c;
+  --color-sky-soft: #e9f2fb;
+  --color-sky-mist: #d4e6f7;
+  --color-sea: #2a7cc4;
+
+  --color-teal: #14a39a;
+  --color-teal-ink: #0a7770;
+  --color-teal-soft: #e3f4f1;
+  --color-teal-line: #a9dcd5;
+
+  --color-sand: #dcc48e;
+  --color-sand-wash: #fbf6ea;
+  --color-sand-line: #ece0c2;
+  --color-sand-ink: #75592a;
+
+  --color-danger: #b02a37;
+  --color-danger-ink: #8c1d29;
+  --color-danger-soft: #fdeef0;
+  --color-danger-line: #f1c4ca;
+}
+
 :root {
-  font-family: Verdana, Geneva, sans-serif;
-  color-scheme: dark;
+  color-scheme: light;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+  accent-color: var(--color-sky);
+  caret-color: var(--color-sky);
+  scrollbar-color: var(--color-line-strong) transparent;
 }
 
 body {
   margin: 0;
+  background: var(--color-ground);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+::selection {
+  background: var(--color-sky-mist);
+  color: var(--color-ink);
+}
+
+.font-mono {
+  font-variant-numeric: tabular-nums;
+}
+
+:where(a, button, summary, select, input, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-teal);
+  outline-offset: 2px;
 }

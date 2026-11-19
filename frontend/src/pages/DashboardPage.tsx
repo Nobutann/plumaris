@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { FormEvent } from 'react'
+import type { FormEvent, ReactNode } from 'react'
 import { api } from '../api'
 import { DashboardCharts } from '../components/DashboardCharts'
 import { ErrorMessage, Panel, fieldClass, primaryButtonClass, secondaryButtonClass } from '../components/ui'
@@ -13,13 +13,14 @@ const unfiltered: DashboardFilters = {
 const counts = new Intl.NumberFormat('pt-BR')
 const measures = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 4 })
 const percentages = new Intl.NumberFormat('pt-BR', { style: 'percent', maximumFractionDigits: 2 })
-const labelClass = 'grid min-w-0 gap-1.5 text-sm text-[#d1e3ef]'
+const labelClass = 'grid min-w-0 gap-1.5 text-[13px] font-semibold text-ink'
 
 interface DashboardPageProps {
   appliedFilters: DashboardFilters | null
   onApply: (filters: DashboardFilters) => void
   refreshVersion: number
   onRefresh: () => void
+  onConnectionChange: (connected: boolean) => void
 }
 
 type StatisticsResult = { data: DashboardStatisticsResponse } | { error: string }
@@ -36,7 +37,7 @@ function interestPeriod({ startDate, endDate }: DashboardFilters): string {
   return 'Todo o período'
 }
 
-export function DashboardPage({ appliedFilters, onApply, refreshVersion, onRefresh }: DashboardPageProps) {
+export function DashboardPage({ appliedFilters, onApply, refreshVersion, onRefresh, onConnectionChange }: DashboardPageProps) {
   const requested = appliedFilters ?? unfiltered
   const [draft, setDraft] = useState(requested)
   const [dateError, setDateError] = useState(false)
@@ -69,7 +70,9 @@ export function DashboardPage({ appliedFilters, onApply, refreshVersion, onRefre
     const controller = new AbortController()
     const { signal } = controller
     function complete(result: StatisticsResult) {
-      if (!signal.aborted) setSettled({ filters: requested, version: refreshVersion, result })
+      if (signal.aborted) return
+      setSettled({ filters: requested, version: refreshVersion, result })
+      onConnectionChange('data' in result)
     }
 
     api.dashboardStatistics(requested, signal).then((data) => {
@@ -78,7 +81,7 @@ export function DashboardPage({ appliedFilters, onApply, refreshVersion, onRefre
       complete({ error: cause instanceof Error ? cause.message : 'Não foi possível carregar as estatísticas.' })
     })
     return () => controller.abort()
-  }, [requested, refreshVersion])
+  }, [requested, refreshVersion, onConnectionChange])
 
   const current = settled?.filters === requested && settled.version === refreshVersion ? settled.result : null
   const data = current && 'data' in current ? current.data : null
@@ -106,8 +109,8 @@ export function DashboardPage({ appliedFilters, onApply, refreshVersion, onRefre
 
   return (
     <div className="space-y-5">
-      <Panel title="Filtros" detail="Espécie, centro e disponibilidade recortam os animais. As datas afetam apenas os interesses.">
-        <form onSubmit={apply} className="space-y-3 p-4">
+      <Panel tone="sand" title="Filtros" detail="Espécie, centro e disponibilidade recortam os animais. As datas afetam apenas os interesses.">
+        <form onSubmit={apply} className="space-y-3 px-5 pt-1 pb-5">
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
             <div className={labelClass}>
               <label htmlFor="dashboard-species">Espécie</label>
@@ -161,12 +164,12 @@ export function DashboardPage({ appliedFilters, onApply, refreshVersion, onRefre
             </label>
           </div>
           {dateError && <div id="dashboard-date-error"><ErrorMessage message="A data inicial deve ser anterior ou igual à data final." /></div>}
-          {centersVersion !== refreshVersion && <p role="status" className="text-xs text-[#9cb5c6]">Carregando opções de centros…</p>}
+          {centersVersion !== refreshVersion && <p role="status" className="text-xs text-muted">Carregando opções de centros…</p>}
           {centersVersion === refreshVersion && centerError && <ErrorMessage message={`Opções de centros: ${centerError}`} />}
           <div className="flex flex-wrap items-center gap-2">
             <button type="submit" className={primaryButtonClass}>Aplicar filtros</button>
             <button type="button" onClick={clear} className={secondaryButtonClass}>Limpar filtros</button>
-            {hasDraftChanges && <p className="text-xs text-[#a8cce2]">Há alterações de filtros ainda não aplicadas.</p>}
+            {hasDraftChanges && <p className="text-xs text-sky-strong">Há alterações de filtros ainda não aplicadas.</p>}
           </div>
         </form>
       </Panel>
@@ -174,12 +177,12 @@ export function DashboardPage({ appliedFilters, onApply, refreshVersion, onRefre
       <div className="space-y-5">
         {!current && (
           <Panel title="Estatísticas">
-            <p role="status" className="p-5 text-sm text-[#b9d0df]">{settled ? 'Atualizando estatísticas…' : 'Carregando estatísticas…'}</p>
+            <p role="status" className="p-5 text-sm text-muted">{settled ? 'Atualizando estatísticas…' : 'Carregando estatísticas…'}</p>
           </Panel>
         )}
         {current && 'error' in current && (
           <Panel title="Estatísticas">
-            <div className="space-y-3 p-4">
+            <div className="space-y-3 px-5 pt-1 pb-5">
               <ErrorMessage message={current.error} />
               <button type="button" onClick={onRefresh} className={secondaryButtonClass}>Tentar novamente</button>
             </div>
@@ -187,8 +190,8 @@ export function DashboardPage({ appliedFilters, onApply, refreshVersion, onRefre
         )}
         {data && filters && (
           <>
-            <div className="space-y-1 border border-[#2b4961] bg-[#112438] px-4 py-3 text-sm" role="status">
-              <p className="font-semibold text-[#e4f1fa]">Filtros aplicados</p>
+            <div className="space-y-0.5 px-1 text-sm text-muted" role="status">
+              <p className="font-semibold text-ink">Filtros aplicados</p>
               <p>Espécie: {filters.species ? speciesLabel(filters.species) : 'Todas'} · Centro: {selectedCenter ?? centerLabel(filters.centerId)} · Disponibilidade: {availabilityLabel(filters.available)}</p>
               <p>Período de interesses: {interestPeriod(filters)} · Data de referência: {dateLabel(data.referenceDate)}</p>
             </div>
@@ -212,8 +215,10 @@ function DashboardIndicators({ data }: { data: DashboardStatisticsResponse }) {
   return (
     <>
       <Panel title="Indicadores">
-        <div className="grid grid-cols-2 gap-3 p-4 md:grid-cols-3 xl:grid-cols-4">
-          <Metric label="Total de animais" value={counts.format(indicators.totalAnimals)} />
+        <div className={metricGridClass}>
+          <Metric label="Total de animais" value={counts.format(indicators.totalAnimals)} wide>
+            <AvailabilityTide available={indicators.availableAnimals} unavailable={indicators.unavailableAnimals} />
+          </Metric>
           <Metric label="Disponíveis" value={counts.format(indicators.availableAnimals)} />
           <Metric label="Indisponíveis" value={counts.format(indicators.unavailableAnimals)} />
           <Metric label="Percentual disponível" value={indicators.availablePercentage === null
@@ -226,7 +231,7 @@ function DashboardIndicators({ data }: { data: DashboardStatisticsResponse }) {
       <Panel title="Estatísticas de idade" detail={ages.validAgeCount
         ? 'Idades válidas em anos completos no recorte.'
         : 'As medidas são indefinidas sem idades válidas.'}>
-        <div className="grid grid-cols-2 gap-3 p-4 md:grid-cols-3 xl:grid-cols-4">
+        <div className={metricGridClass}>
           <Metric label="Média" value={ageMeasure(ages.mean, 'anos')} />
           <Metric label="Mediana" value={ageMeasure(ages.median, 'anos')} />
           <Metric label="Modas" value={ages.validAgeCount === 0 ? 'Sem dados' : ages.modes.length === 0 ? 'Sem moda'
@@ -241,11 +246,30 @@ function DashboardIndicators({ data }: { data: DashboardStatisticsResponse }) {
   )
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
+const metricGridClass = 'grid grid-cols-2 gap-x-6 gap-y-5 px-5 pt-1 pb-5 md:grid-cols-3 xl:grid-cols-4'
+
+function Metric({ label, value, wide = false, children }: { label: string; value: string; wide?: boolean; children?: ReactNode }) {
   return (
-    <dl className="min-w-0 border border-[#2b4961] bg-[#0d1b2b] p-3">
-      <dt className="text-xs font-medium text-[#a8c3d4]">{label}</dt>
-      <dd className="mt-1 wrap-break-word font-mono text-lg text-[#e7f3fb] sm:text-xl">{value}</dd>
+    <dl className={`min-w-0 border-t border-line pt-3 ${wide ? 'col-span-2' : ''}`}>
+      <dt className="text-[13px] text-muted">{label}</dt>
+      <dd className={`mt-0.5 wrap-break-word font-semibold text-ink tabular-nums ${wide ? 'text-[32px] leading-tight' : 'text-xl leading-snug sm:text-[22px]'}`}>{value}</dd>
+      {children}
     </dl>
+  )
+}
+
+function AvailabilityTide({ available, unavailable }: { available: number; unavailable: number }) {
+  const total = available + unavailable
+  return (
+    <dd className="mt-3">
+      <div aria-hidden="true" className="flex h-2.5 overflow-hidden rounded-full bg-track">
+        {total > 0 && <div className="bg-sea" style={{ width: `${(available / total) * 100}%` }} />}
+        {total > 0 && <div className="bg-sand" style={{ width: `${(unavailable / total) * 100}%` }} />}
+      </div>
+      <p className="mt-1.5 flex flex-wrap justify-between gap-x-3 text-xs text-muted">
+        <span className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="size-2 rounded-full bg-sea" />{counts.format(available)} disponíveis</span>
+        <span className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="size-2 rounded-full bg-sand" />{counts.format(unavailable)} indisponíveis</span>
+      </p>
+    </dd>
   )
 }

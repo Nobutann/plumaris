@@ -9,6 +9,7 @@ import {
   ErrorMessage,
   Panel,
   fieldClass,
+  labelClass,
   primaryButtonClass,
   tableClass,
   tableHeadClass,
@@ -68,18 +69,18 @@ export function ReportsPage({ data }: { data: DashboardData }) {
   return (
     <div className="space-y-5">
       <Panel title="Consultas SQL" detail="Resultados das quatro consultas disponíveis na API">
-        <div className="grid gap-px bg-[#2b4961] sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-2 px-5 pb-5 sm:grid-cols-2 xl:grid-cols-4">
           {reports.map((report) => (
             <button
               key={report.id}
               type="button"
               onClick={() => setActiveReport(report.id)}
               aria-current={activeReport === report.id ? 'page' : undefined}
-              className={`min-h-24 p-4 text-left transition-colors ${activeReport === report.id ? 'bg-[#244562] text-[#e7f3fb]' : 'bg-[#112438] text-[#9bb5c6] hover:bg-[#1b344a]'}`}
+              className={`min-h-24 rounded-[12px] border p-4 text-left transition-colors ${activeReport === report.id ? 'border-sky bg-sky text-white' : 'border-line bg-paper text-ink hover:bg-sky-soft'}`}
             >
-              <span className="font-mono text-xs text-[#80bddd]">0{report.id}</span>
+              <span className="font-mono text-xs text-sky">0{report.id}</span>
               <span className="mt-1 block text-sm font-semibold">{report.title}</span>
-              <span className="mt-1 block text-xs leading-5 text-[#8faabc]">{report.detail}</span>
+              <span className="mt-1 block text-xs leading-5 text-muted">{report.detail}</span>
             </button>
           ))}
         </div>
@@ -95,12 +96,12 @@ export function ReportsPage({ data }: { data: DashboardData }) {
         <Panel title="02 · Resumo por espécie" detail="Quantidade total, disponível e indisponível por espécie">
           {data.speciesSummary.length === 0 ? <EmptyState>Não há dados para esta consulta.</EmptyState> : (
             <div className="overflow-x-auto"><table className={tableClass}>
-              <thead className={tableHeadClass}><tr><th className="px-4 py-2.5">Espécie</th><th className="px-4 py-2.5">Total</th><th className="px-4 py-2.5">Disponíveis</th><th className="px-4 py-2.5">Indisponíveis</th></tr></thead>
+              <thead className={tableHeadClass}><tr><th className="px-5 py-3">Espécie</th><th className="px-5 py-3">Total</th><th className="px-5 py-3">Disponíveis</th><th className="px-5 py-3">Indisponíveis</th></tr></thead>
               <tbody>{data.speciesSummary.map((row) => <tr key={row.species} className={tableRowClass}>
-                <td className="px-4 py-2.5 text-[#b7dbf0]">{speciesLabel(row.species)}</td>
-                <td className="px-4 py-2.5 font-mono">{row.total}</td>
-                <td className="px-4 py-2.5 font-mono">{row.available}</td>
-                <td className="px-4 py-2.5 font-mono">{row.unavailable}</td>
+                <td className="px-5 py-3 text-ink">{speciesLabel(row.species)}</td>
+                <td className="px-5 py-3 font-mono">{row.total}</td>
+                <td className="px-5 py-3 font-mono">{row.available}</td>
+                <td className="px-5 py-3 font-mono">{row.unavailable}</td>
               </tr>)}</tbody>
             </table></div>
           )}
@@ -111,11 +112,11 @@ export function ReportsPage({ data }: { data: DashboardData }) {
         <Panel title="03 · Faixas etárias" detail="Idade calculada no banco a partir da data de nascimento">
           {data.ageGroupSummary.length === 0 ? <EmptyState>Não há dados para esta consulta.</EmptyState> : (
             <div className="overflow-x-auto"><table className={tableClass}>
-              <thead className={tableHeadClass}><tr><th className="px-4 py-2.5">Espécie</th><th className="px-4 py-2.5">Faixa etária</th><th className="px-4 py-2.5">Animais</th></tr></thead>
+              <thead className={tableHeadClass}><tr><th className="px-5 py-3">Espécie</th><th className="px-5 py-3">Faixa etária</th><th className="px-5 py-3">Animais</th></tr></thead>
               <tbody>{data.ageGroupSummary.map((row) => <tr key={`${row.species}-${row.ageGroup}`} className={tableRowClass}>
-                <td className="px-4 py-2.5 text-[#b7dbf0]">{speciesLabel(row.species)}</td>
-                <td className="px-4 py-2.5">{ageGroupLabel(row.ageGroup)}</td>
-                <td className="px-4 py-2.5 font-mono">{row.total}</td>
+                <td className="px-5 py-3 text-ink">{speciesLabel(row.species)}</td>
+                <td className="px-5 py-3">{ageGroupLabel(row.ageGroup)}</td>
+                <td className="px-5 py-3 font-mono">{row.total}</td>
               </tr>)}</tbody>
             </table></div>
           )}
@@ -124,15 +125,15 @@ export function ReportsPage({ data }: { data: DashboardData }) {
 
       {activeReport === 4 && (
         <Panel title="04 · Recomendações" detail="Animais disponíveis que atendem às preferências do usuário informado">
-          <form onSubmit={(event) => void searchRecommendations(event)} className="flex flex-wrap items-end gap-3 border-b border-[#29465b] p-4">
-            <label className="block w-48 text-xs font-medium text-[#a9c2d2]">ID do usuário
+          <form onSubmit={(event) => void searchRecommendations(event)} className="flex flex-wrap items-end gap-3 border-y border-sand-line bg-sand-wash px-5 py-4">
+            <label className={`${labelClass} w-48`}>ID do usuário
               <input className={`${fieldClass} mt-1.5`} type="number" min="1" step="1" required value={userId} onChange={(event) => setUserId(event.target.value)} />
             </label>
             <button type="submit" disabled={recommendationStatus === 'loading'} className={primaryButtonClass}>Buscar recomendações</button>
           </form>
           <div aria-live="polite">
             {recommendationStatus === 'loading' && <EmptyState>Carregando recomendações...</EmptyState>}
-            {recommendationStatus === 'error' && <div className="p-4"><ErrorMessage message={recommendationError} /></div>}
+            {recommendationStatus === 'error' && <div className="px-5 py-4"><ErrorMessage message={recommendationError} /></div>}
             {recommendationStatus === 'ready' && (recommended.length === 0
               ? <EmptyState>Nenhum animal corresponde às preferências deste usuário.</EmptyState>
               : <AnimalResults animals={recommended} />)}
@@ -146,14 +147,14 @@ export function ReportsPage({ data }: { data: DashboardData }) {
 function AnimalResults({ animals }: { animals: Animal[] }) {
   return (
     <div className="overflow-x-auto"><table className={tableClass}>
-      <thead className={tableHeadClass}><tr><th className="px-4 py-2.5">ID</th><th className="px-4 py-2.5">Animal</th><th className="px-4 py-2.5">Espécie</th><th className="px-4 py-2.5">Raça</th><th className="px-4 py-2.5">Centro de adoção</th><th className="px-4 py-2.5">Situação</th></tr></thead>
+      <thead className={tableHeadClass}><tr><th className="px-5 py-3">ID</th><th className="px-5 py-3">Animal</th><th className="px-5 py-3">Espécie</th><th className="px-5 py-3">Raça</th><th className="px-5 py-3">Centro de adoção</th><th className="px-5 py-3">Situação</th></tr></thead>
       <tbody>{animals.map((animal) => <tr key={animal.id} className={tableRowClass}>
-        <td className="px-4 py-2.5 font-mono text-xs text-[#819caf]">#{animal.id}</td>
-        <td className="px-4 py-2.5 font-medium text-[#b7dbf0]">{animal.name}</td>
-        <td className="px-4 py-2.5">{speciesLabel(animal.species)}</td>
-        <td className="px-4 py-2.5">{animal.breedName || '—'}</td>
-        <td className="px-4 py-2.5">{animal.centerName}<span className="ml-1 font-mono text-xs text-[#819caf]">#{animal.centerId}</span></td>
-        <td className="px-4 py-2.5"><Availability available={animal.available} /></td>
+        <td className="px-5 py-3 font-mono text-xs text-subtle">#{animal.id}</td>
+        <td className="px-5 py-3 font-semibold text-ink">{animal.name}</td>
+        <td className="px-5 py-3">{speciesLabel(animal.species)}</td>
+        <td className="px-5 py-3">{animal.breedName || '—'}</td>
+        <td className="px-5 py-3">{animal.centerName}<span className="ml-1 font-mono text-xs text-subtle">#{animal.centerId}</span></td>
+        <td className="px-5 py-3"><Availability available={animal.available} /></td>
       </tr>)}</tbody>
     </table></div>
   )

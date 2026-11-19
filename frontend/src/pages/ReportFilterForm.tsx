@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
-import { ErrorMessage, fieldClass, primaryButtonClass, secondaryButtonClass } from '../components/ui'
+import { ErrorMessage, fieldClass, labelClass, primaryButtonClass, secondaryButtonClass } from '../components/ui'
 import { speciesLabel } from '../format'
 import type { CatalogData, ReportFilters, UserSummary } from '../types'
 
@@ -87,7 +87,7 @@ export function ReportFilterForm({ fields, data, draft, applied, onEdit, onApply
   })
 
   return (
-    <div className="border-b border-[#29465b] p-4">
+    <div className="border-y border-sand-line bg-sand-wash px-5 py-4">
       <form className="flex flex-wrap items-end gap-3" onSubmit={(event) => {
         event.preventDefault()
         const city = draft.city?.replace(/\s+/g, ' ').trim()
@@ -97,7 +97,7 @@ export function ReportFilterForm({ fields, data, draft, applied, onEdit, onApply
           const value = draft[field]
           const choices = options[field]
           return (
-            <label key={field} className="block w-full text-xs font-medium text-[#a9c2d2] sm:w-52">{labels[field]}
+            <label key={field} className={`${labelClass} w-full sm:w-52`}>{labels[field]}
               {field === 'city' ? (
                 <input className={`${fieldClass} mt-1.5`} type="text" value={draft.city ?? ''}
                   onChange={(event) => onEdit({ ...draft, city: event.target.value })} />
@@ -130,7 +130,7 @@ export function ReportFilterForm({ fields, data, draft, applied, onEdit, onApply
           }}>Recarregar usuários</button>
         </div>
       )}
-      <p className="mt-3 text-xs text-[#a9c2d2]" aria-live="polite">
+      <p className="mt-3 text-xs text-muted" aria-live="polite">
         {appliedLabels.length ? `Filtros aplicados: ${appliedLabels.join(' | ')}` : 'Sem filtros aplicados.'}
       </p>
     </div>

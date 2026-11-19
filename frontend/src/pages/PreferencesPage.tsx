@@ -1,10 +1,14 @@
-import { useEffect, useRef, useState } from 'react'
-import type { FormEvent } from 'react'
+import { useEffect, useImperativeHandle, useRef, useState } from 'react'
+import type { FormEvent, Ref } from 'react'
 import { api } from '../api'
 import {
   EmptyState,
   ErrorMessage,
   Panel,
+  PlusIcon,
+  SuccessMessage,
+  deleteLinkClass,
+  editLinkClass,
   fieldClass,
   primaryButtonClass,
   secondaryButtonClass,
@@ -15,7 +19,13 @@ import {
 import { sexLabel, sizeLabel, speciesLabel } from '../format'
 import type { Breed, Preference, PreferenceInput, UserSummary } from '../types'
 
-export function PreferencesPage() {
+interface PreferencesPageProps {
+  refreshRef: Ref<() => void>
+  onRefreshLockChange: (locked: boolean) => void
+  onConnectionChange: (connected: boolean) => void
+}
+
+export function PreferencesPage({ refreshRef, onRefreshLockChange, onConnectionChange }: PreferencesPageProps) {
   const [data, setData] = useState<Awaited<ReturnType<typeof api.loadPreferences>> | null>(null)
   const [loadAttempt, setLoadAttempt] = useState(0)
   const [editor, setEditor] = useState<Preference | 'new' | null>(null)
@@ -27,12 +37,18 @@ export function PreferencesPage() {
   useEffect(() => {
     let active = true
     api.loadPreferences()
-      .then((result) => { if (active) setData(result) })
+      .then((result) => {
+        if (!active) return
+        setData(result)
+        onConnectionChange(true)
+      })
       .catch((cause: unknown) => {
-        if (active) setError(cause instanceof Error ? cause.message : 'Não foi possível carregar as preferências.')
+        if (!active) return
+        setError(cause instanceof Error ? cause.message : 'Não foi possível carregar as preferências.')
+        onConnectionChange(false)
       })
     return () => { active = false }
-  }, [loadAttempt])
+  }, [loadAttempt, onConnectionChange])
 
   useEffect(() => {
     if (editor) {
@@ -53,7 +69,7 @@ export function PreferencesPage() {
       const preferences = await api.listPreferences()
       setData((current) => current && { ...current, preferences })
     } catch {
-      setError('Não foi possível atualizar a lista. Use “Atualizar lista” para tentar novamente.')
+      setError('Não foi possível atualizar a lista. Use “Atualizar dados” para tentar novamente.')
     }
   }
 
@@ -109,12 +125,17 @@ export function PreferencesPage() {
     setData(null)
     setLoadAttempt((attempt) => attempt + 1)
   }
+  useImperativeHandle(refreshRef, () => reload)
+
+  const refreshLocked = busy || editor !== null || !data
+  useEffect(() => onRefreshLockChange(refreshLocked), [refreshLocked, onRefreshLockChange])
+
 
   if (!data) {
     return (
       <Panel title="Preferências cadastradas">
         {error ? (
-          <div className="space-y-3 p-4">
+          <div className="space-y-3 px-5 pt-1 pb-5">
             <ErrorMessage message={error} />
             <button type="button" onClick={reload} className={secondaryButtonClass}>Tentar novamente</button>
           </div>
@@ -125,7 +146,7 @@ export function PreferencesPage() {
 
   return (
     <div className="space-y-5">
-      {success && <div role="status" className="border border-[#486d60] bg-[#1b3435] px-4 py-3 text-sm text-[#a8d7ba]">{success}</div>}
+      {success && <SuccessMessage>{success}</SuccessMessage>}
       {error && <ErrorMessage message={error} />}
       {editor && (
         <div ref={editorRef} tabIndex={-1} className="outline-none">
@@ -145,46 +166,64 @@ export function PreferencesPage() {
       <Panel
         title="Preferências cadastradas"
         detail={`${data.preferences.length} registros`}
-        action={(
-          <div className="flex flex-wrap gap-2">
-            <button type="button" disabled={busy || editor !== null} onClick={reload} className={secondaryButtonClass}>Atualizar lista</button>
-            <button type="button" disabled={busy || data.users.length === 0} onClick={() => openEditor('new')} className={primaryButtonClass}>+ Nova preferência</button>
-          </div>
-        )}
+        action={<button type="button" disabled={busy || data.users.length === 0} onClick={() => openEditor('new')} className={primaryButtonClass}><PlusIcon /> Nova preferência</button>}
       >
         {data.preferences.length === 0 ? (
           <EmptyState>{data.users.length ? 'Nenhuma preferência cadastrada.' : 'Nenhum usuário disponível para cadastrar preferências.'}</EmptyState>
-        ) : (
-          <div className="overflow-x-auto">
+        ) : (<>
+          <ul className="divide-y divide-line border-t border-line sm:hidden">
+            {data.preferences.map((preference) => (
+              <li key={preference.id} className="space-y-1.5 px-5 py-4">
+                <p className="font-semibold text-ink">{preference.userName}</p>
+                <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-xs">
+                  {([
+                    ['Espécie', preference.desiredSpecies ? speciesLabel(preference.desiredSpecies) : '—'],
+                    ['Porte', sizeLabel(preference.desiredSize)],
+                    ['Idade (anos)', ageLabel(preference)],
+                    ['Sexo', sexLabel(preference.desiredSex)],
+                    ['Cor', preference.desiredColor ?? '—'],
+                    ['Raça', preference.breedName ?? '—'],
+                  ] as const).map(([label, value]) => (
+                    <div key={label} className="contents"><dt className="text-muted">{label}</dt><dd className="text-ink">{value}</dd></div>
+                  ))}
+                </dl>
+                <div className="-ml-2 flex gap-1 pt-1">
+                  <button type="button" disabled={busy} onClick={() => openEditor(preference)} className={editLinkClass}>Editar</button>
+                  <button type="button" disabled={busy} onClick={() => void remove(preference)} className={deleteLinkClass}>Excluir</button>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <div className="hidden overflow-x-auto sm:block">
             <table className={tableClass}>
               <thead className={tableHeadClass}>
                 <tr>
                   {['Usuário', 'Espécie', 'Porte', 'Idade (anos)', 'Sexo', 'Cor', 'Raça'].map((label) => (
-                    <th key={label} scope="col" className="px-4 py-2.5">{label}</th>
+                    <th key={label} scope="col" className="px-5 py-3">{label}</th>
                   ))}
-                  <th scope="col" className="px-4 py-2.5 text-right">Ações</th>
+                  <th scope="col" className="px-5 py-3 text-right">Ações</th>
                 </tr>
               </thead>
               <tbody>
                 {data.preferences.map((preference) => (
                   <tr key={preference.id} className={tableRowClass}>
-                    <td className="px-4 py-2.5 font-medium text-[#b7dbf0]">{preference.userName}</td>
-                    <td className="px-4 py-2.5">{preference.desiredSpecies ? speciesLabel(preference.desiredSpecies) : '—'}</td>
-                    <td className="px-4 py-2.5">{sizeLabel(preference.desiredSize)}</td>
-                    <td className="whitespace-nowrap px-4 py-2.5">{ageLabel(preference)}</td>
-                    <td className="px-4 py-2.5">{sexLabel(preference.desiredSex)}</td>
-                    <td className="px-4 py-2.5">{preference.desiredColor ?? '—'}</td>
-                    <td className="px-4 py-2.5">{preference.breedName ?? '—'}</td>
-                    <td className="whitespace-nowrap px-4 py-2.5 text-right text-xs">
-                      <button type="button" disabled={busy} onClick={() => openEditor(preference)} className="mr-3 text-[#9fd2ef] hover:underline disabled:opacity-50">Editar</button>
-                      <button type="button" disabled={busy} onClick={() => void remove(preference)} className="text-[#e6a4aa] hover:underline disabled:opacity-50">Excluir</button>
+                    <td className="px-5 py-3 font-semibold text-ink">{preference.userName}</td>
+                    <td className="px-5 py-3">{preference.desiredSpecies ? speciesLabel(preference.desiredSpecies) : '—'}</td>
+                    <td className="px-5 py-3">{sizeLabel(preference.desiredSize)}</td>
+                    <td className="whitespace-nowrap px-5 py-3">{ageLabel(preference)}</td>
+                    <td className="px-5 py-3">{sexLabel(preference.desiredSex)}</td>
+                    <td className="px-5 py-3">{preference.desiredColor ?? '—'}</td>
+                    <td className="px-5 py-3">{preference.breedName ?? '—'}</td>
+                    <td className="whitespace-nowrap px-5 py-3 text-right text-xs">
+                      <button type="button" disabled={busy} onClick={() => openEditor(preference)} className={editLinkClass}>Editar</button>
+                      <button type="button" disabled={busy} onClick={() => void remove(preference)} className={deleteLinkClass}>Excluir</button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        )}
+        </>)}
       </Panel>
     </div>
   )
@@ -226,8 +265,8 @@ function PreferenceForm({ preference, users, breeds, busy, onSave, onCancel }: {
   }
 
   return (
-    <form onSubmit={submit} className="space-y-5 p-4">
-      <fieldset disabled={busy} className="grid gap-4 md:grid-cols-2 [&>label]:text-xs [&>label]:font-medium [&>label]:text-[#a9c2d2]">
+    <form onSubmit={submit} className="space-y-5 px-5 pt-2 pb-5">
+      <fieldset disabled={busy} className="grid gap-4 md:grid-cols-2 [&>label]:text-[13px] [&>label]:font-semibold [&>label]:text-ink">
         <label>Usuário *
           <select name="userId" className={inputClass} defaultValue={preference?.userId ?? ''} required>
             <option value="" disabled>Selecione um usuário</option>
@@ -278,7 +317,7 @@ function PreferenceForm({ preference, users, breeds, busy, onSave, onCancel }: {
           </select>
         </label>
       </fieldset>
-      <div className="flex flex-wrap gap-2 border-t border-[#29465b] pt-4">
+      <div className="flex flex-wrap gap-2 border-t border-line pt-4">
         <button type="submit" disabled={busy} className={primaryButtonClass}>{busy ? 'Salvando...' : 'Salvar preferência'}</button>
         <button type="button" disabled={busy} onClick={onCancel} className={secondaryButtonClass}>Cancelar</button>
       </div>

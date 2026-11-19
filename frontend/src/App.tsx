@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from './api'
-import { ErrorMessage, secondaryButtonClass } from './components/ui'
+import { ErrorMessage, RefreshIcon, secondaryButtonClass } from './components/ui'
 import { AnimalsPage } from './pages/AnimalsPage'
 import { BreedsPage } from './pages/BreedsPage'
 import { CentersPage } from './pages/CentersPage'
@@ -39,6 +39,9 @@ function App() {
   const [error, setError] = useState('')
   const catalogRequest = useRef<AbortController | null>(null)
   const refreshReports = useRef<(() => Promise<void>) | null>(null)
+  const refreshPreferences = useRef<(() => void) | null>(null)
+  const [preferencesRefreshLocked, setPreferencesRefreshLocked] = useState(true)
+  const [connected, setConnected] = useState<boolean | null>(null)
 
   const refresh = useCallback(() => {
     catalogRequest.current?.abort()
@@ -50,7 +53,9 @@ function App() {
       .then(([animals, breeds, centers]) => {
         if (signal.aborted) return
         setLoading(false)
-        if (animals.status === 'fulfilled' && breeds.status === 'fulfilled' && centers.status === 'fulfilled') {
+        const loaded = animals.status === 'fulfilled' && breeds.status === 'fulfilled' && centers.status === 'fulfilled'
+        setConnected(loaded)
+        if (loaded) {
           setData({ animals: animals.value, breeds: breeds.value, centers: centers.value })
           setError('')
           return
@@ -101,97 +106,115 @@ function App() {
   const showsCatalog = page !== 'dashboard' && page !== 'preferences'
 
   return (
-    <div className="min-h-screen bg-[#0b1929] text-[#c8d8e3]">
-      <div className="mx-auto flex min-h-screen max-w-[1500px] flex-col border-x border-[#253e53] lg:flex-row">
-        <aside className="border-b border-[#2b4961] bg-[#101f30] lg:w-56 lg:shrink-0 lg:border-r lg:border-b-0">
-          <div className="flex items-center justify-between gap-3 border-b border-[#2b4961] px-5 py-5 lg:block lg:py-7">
+    <div className="min-h-screen bg-ground text-ink lg:flex">
+      <aside className="bg-sky text-white lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-[236px] lg:shrink-0 lg:flex-col">
+        <div className="flex items-center justify-between gap-3 px-5 pt-4 pb-2 lg:block lg:border-b lg:border-white/15 lg:px-6 lg:pt-7 lg:pb-6">
+          <div className="flex items-center gap-3">
+            <BrandMark />
             <div>
-              <span className="block font-mono text-[11px] font-semibold uppercase tracking-[0.24em] text-[#77b8dd]">Base de dados</span>
-              <span className="mt-1 block text-2xl font-semibold tracking-tight text-[#e5f1f8]">adoção<span className="text-[#78b8db]">.</span></span>
+              <span className="block text-xl leading-tight font-bold">Plumaris</span>
+              <span className="block text-xs text-sky-mist">Gestão de adoções</span>
             </div>
-            <span className="border border-[#3a5b72] px-2 py-1 font-mono text-[10px] text-[#9bb9cc]">v1.0.0</span>
           </div>
+          <span className="rounded-full border border-white/30 px-2 py-0.5 font-mono text-[11px] text-sky-mist lg:mt-4 lg:inline-block">v1.0.0</span>
+        </div>
 
-          <nav aria-label="Navegação principal" className="flex gap-1 overflow-x-auto px-3 py-3 lg:block lg:space-y-1 lg:px-3 lg:py-5">
-            {navigation.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => navigate(item.id)}
-                aria-current={page === item.id ? 'page' : undefined}
-                className={`flex shrink-0 items-center gap-3 border-l-2 px-3 py-2.5 text-left text-sm transition-colors lg:w-full ${page === item.id ? 'border-[#8bc8e9] bg-[#203e57] font-semibold text-[#e5f2fa]' : 'border-transparent text-[#a2b8c7] hover:bg-[#182e43] hover:text-white'}`}
-              >
-                <span className="font-mono text-[11px] text-[#7ca8c0]">{item.number}</span>
-                {item.label}
-              </button>
-            ))}
-          </nav>
+        <nav aria-label="Navegação principal" className="flex gap-1 overflow-x-auto px-3 pb-3 lg:block lg:space-y-1 lg:overflow-visible lg:py-4">
+          {navigation.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => navigate(item.id)}
+              aria-current={page === item.id ? 'page' : undefined}
+              className={`flex shrink-0 items-center gap-3 rounded-[10px] px-3 py-2.5 text-left text-[15px] transition-colors focus-visible:outline-white lg:w-full ${page === item.id ? 'bg-paper font-semibold text-ink shadow-[0_1px_3px_rgb(14_42_71/0.18)]' : 'text-white hover:bg-white/12'}`}
+            >
+              <span className={`font-mono text-xs ${page === item.id ? 'text-sky' : 'text-sky-mist'}`}>{item.number}</span>
+              {item.label}
+            </button>
+          ))}
+        </nav>
 
-          <div className="hidden border-t border-[#2b4961] px-5 py-5 lg:block">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-[#7090a4]">Conexão</p>
-            {catalogRequested && page !== 'dashboard' && <p className="mt-2 flex items-center gap-2 text-xs text-[#a9c3d3]">
-              <span className={`size-1.5 rounded-full ${data && !error ? 'bg-[#7bc69a]' : 'bg-[#d09383]'}`} />
-              {data && !error ? 'API conectada' : 'Aguardando API'}
-            </p>}
-            <p className="mt-2 text-xs leading-5 text-[#718fa3]">React · Spring Boot · MySQL</p>
-          </div>
-        </aside>
+        <div className="hidden border-t border-white/15 px-6 py-5 text-xs lg:mt-auto lg:block">
+          {connected !== null && <p role="status" className="mb-2 flex items-center gap-2 font-semibold">
+            <span aria-hidden="true" className={`size-2 rounded-full ${connected ? 'bg-teal-line' : 'bg-sand'}`} />
+            {connected ? 'API conectada' : 'Aguardando API'}
+          </p>}
+          <p className="text-sky-mist">React · Spring Boot · MySQL</p>
+        </div>
+      </aside>
 
-        <main className="min-w-0 flex-1">
-          <header className="flex flex-wrap items-center justify-between gap-4 border-b border-[#2b4961] bg-[#12263a] px-5 py-5 sm:px-7">
-            <div>
-              <div className="mb-1 flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-[#75a9c7]">
-                <span>Catálogo</span><span className="text-[#55738b]">/</span><span>{navigation.find((item) => item.id === page)?.label}</span>
-              </div>
-              <h1 className="text-2xl font-semibold tracking-tight text-[#eaf4fa]">{pageCopy[page].title}</h1>
-              <p className="mt-1 text-sm text-[#9cb5c6]">{pageCopy[page].description}</p>
+      <main className="min-w-0 flex-1">
+        <header className="relative border-b border-line bg-paper">
+          <div className="mx-auto flex max-w-[1280px] flex-wrap items-end justify-between gap-4 px-5 pt-6 pb-5 sm:px-9 sm:pt-7">
+            <div className="min-w-0">
+              <h1 className="text-[26px] leading-tight font-bold tracking-[-0.01em] text-balance">{pageCopy[page].title}</h1>
+              <p className="mt-1 text-sm text-muted">{pageCopy[page].description}</p>
             </div>
             {page === 'dashboard' && <button type="button" onClick={refreshDashboard} className={secondaryButtonClass}>
-              ↻ Atualizar dados
+              <RefreshIcon /> Atualizar dados
+            </button>}
+            {page === 'preferences' && <button type="button" onClick={() => refreshPreferences.current?.()} disabled={preferencesRefreshLocked} className={secondaryButtonClass}>
+              <RefreshIcon /> Atualizar dados
             </button>}
             {showsCatalog && <button type="button" onClick={refreshCurrentPage} disabled={loading} className={secondaryButtonClass}>
-              {loading ? 'Atualizando...' : '↻ Atualizar dados'}
+              <RefreshIcon className={`size-4 ${loading ? 'animate-spin motion-reduce:animate-none' : ''}`} />
+              {loading ? 'Atualizando...' : 'Atualizar dados'}
             </button>}
-          </header>
-
-          <div className="space-y-5 p-5 sm:p-7">
-            {page === 'preferences' && <PreferencesPage />}
-            {showsCatalog && error && (page !== 'reports' || !data) && <ErrorMessage message={error} />}
-            {showsCatalog && loading && !data && <div className="border border-[#2b4961] bg-[#112438] p-10 text-center text-sm text-[#9bb5c6]">Carregando dados do banco...</div>}
-            {showsCatalog && !loading && !data && (
-              <div className="border border-[#2b4961] bg-[#112438] p-8 text-center">
-                <p className="text-sm text-[#b9d0df]">Inicie a API Spring Boot na porta 8080 e tente novamente.</p>
-                <button type="button" onClick={retry} className="mt-4 text-sm font-semibold text-[#91c9e9] hover:underline">Tentar novamente</button>
-              </div>
-            )}
-            {page === 'dashboard' && (
-              <DashboardPage
-                appliedFilters={dashboardFilters}
-                onApply={setDashboardFilters}
-                refreshVersion={dashboardRefresh}
-                onRefresh={refreshDashboard}
-              />
-            )}
-            {data && page === 'animals' && <AnimalsPage animals={data.animals} breeds={data.breeds} centers={data.centers} refresh={refresh} />}
-            {data && page === 'breeds' && <BreedsPage breeds={data.breeds} refresh={refresh} />}
-            {data && page === 'centers' && <CentersPage centers={data.centers} refresh={refresh} />}
-            {data && (
-              <AdvancedReportsPage
-                data={data}
-                visible={page === 'reports'}
-                refreshCatalog={refresh}
-                refreshRef={refreshReports}
-                onOperationCompleted={refreshDashboard}
-              />
-            )}
           </div>
+          <span aria-hidden="true" className="absolute -bottom-px left-5 h-[3px] w-14 rounded-full bg-teal sm:left-9" />
+        </header>
 
-          <footer className="mx-5 mt-8 border-t border-[#27445a] py-5 text-xs text-[#6f8da1] sm:mx-7">
-            Adoção · Interface de consulta e gerenciamento
-          </footer>
-        </main>
-      </div>
+        <div className="mx-auto max-w-[1280px] space-y-5 px-5 py-6 sm:px-9">
+          {page === 'preferences' && (
+            <PreferencesPage refreshRef={refreshPreferences} onRefreshLockChange={setPreferencesRefreshLocked} onConnectionChange={setConnected} />
+          )}
+          {showsCatalog && error && (page !== 'reports' || !data) && <ErrorMessage message={error} />}
+          {showsCatalog && loading && !data && <div role="status" className="rounded-[14px] border border-line bg-paper p-10 text-center text-sm text-muted">Carregando dados do banco...</div>}
+          {showsCatalog && !loading && !data && (
+            <div className="rounded-[14px] border border-line bg-paper p-8 text-center">
+              <p className="text-sm text-ink">Inicie a API Spring Boot na porta 8080 e tente novamente.</p>
+              <button type="button" onClick={retry} className={`${secondaryButtonClass} mt-4`}>Tentar novamente</button>
+            </div>
+          )}
+          {page === 'dashboard' && (
+            <DashboardPage
+              appliedFilters={dashboardFilters}
+              onApply={setDashboardFilters}
+              refreshVersion={dashboardRefresh}
+              onRefresh={refreshDashboard}
+              onConnectionChange={setConnected}
+            />
+          )}
+          {data && page === 'animals' && <AnimalsPage animals={data.animals} breeds={data.breeds} centers={data.centers} refresh={refresh} />}
+          {data && page === 'breeds' && <BreedsPage breeds={data.breeds} refresh={refresh} />}
+          {data && page === 'centers' && <CentersPage centers={data.centers} refresh={refresh} />}
+          {data && (
+            <AdvancedReportsPage
+              data={data}
+              visible={page === 'reports'}
+              refreshCatalog={refresh}
+              refreshRef={refreshReports}
+              onOperationCompleted={refreshDashboard}
+            />
+          )}
+        </div>
+
+        <footer className="mx-auto max-w-[1280px] px-5 sm:px-9">
+          <p className="mt-6 border-t border-line py-5 text-xs text-muted">Adoção · Interface de consulta e gerenciamento</p>
+        </footer>
+      </main>
     </div>
+  )
+}
+
+function BrandMark() {
+  return (
+    <svg viewBox="0 0 32 32" aria-hidden="true" className="size-9 shrink-0">
+      <rect width="32" height="32" rx="9" fill="#ffffff" />
+      <path d="M0 19h32v4a9 9 0 0 1-9 9H9a9 9 0 0 1-9-9z" fill="#dcc48e" />
+      <path d="M0 17.5c4 0 4-1.5 8-1.5s4 1.5 8 1.5 4-1.5 8-1.5 4 1.5 8 1.5V20H0z" fill="#14a39a" />
+      <circle cx="22" cy="9.5" r="3.5" fill="#2a7cc4" />
+    </svg>
   )
 }
 

@@ -7,7 +7,11 @@ import {
   EmptyState,
   ErrorMessage,
   Panel,
+  PlusIcon,
+  deleteLinkClass,
+  editLinkClass,
   fieldClass,
+  labelClass,
   primaryButtonClass,
   secondaryButtonClass,
   tableClass,
@@ -86,7 +90,7 @@ export function BreedsPage({ breeds, refresh }: BreedsPageProps) {
       {editor && (
         <div ref={editorRef} tabIndex={-1} className="outline-none">
           <Panel title={editor === 'new' ? 'Cadastrar raça' : `Editar ${editor.name}`} detail="Nome e espécie são obrigatórios">
-            {error && <div className="px-4 pt-4"><ErrorMessage message={error} /></div>}
+            {error && <div className="px-5 pt-1 pb-3"><ErrorMessage message={error} /></div>}
             <BreedForm key={editor === 'new' ? 'new' : editor.id} breed={editor === 'new' ? null : editor} busy={busy} onSave={save} onCancel={() => setEditor(null)} />
           </Panel>
         </div>
@@ -94,9 +98,9 @@ export function BreedsPage({ breeds, refresh }: BreedsPageProps) {
       <Panel
         title="Raças cadastradas"
         detail={`${filteredBreeds.length} de ${breeds.length} registros`}
-        action={<button type="button" onClick={() => openEditor('new')} className={primaryButtonClass}>+ Nova raça</button>}
+        action={<button type="button" onClick={() => openEditor('new')} className={primaryButtonClass}><PlusIcon /> Nova raça</button>}
       >
-        <div className="grid gap-3 border-b border-[#29465b] p-4 md:grid-cols-[1fr_170px]">
+        <div className="grid gap-3 border-y border-sand-line bg-sand-wash px-5 py-4 md:grid-cols-[1fr_170px]">
           <label className="sr-only" htmlFor="breed-search">Buscar raças</label>
           <input id="breed-search" className={fieldClass} placeholder="Buscar por nome" value={search} onChange={(event) => setSearch(event.target.value)} />
           <label className="sr-only" htmlFor="breed-species">Filtrar por espécie</label>
@@ -104,28 +108,40 @@ export function BreedsPage({ breeds, refresh }: BreedsPageProps) {
             <option value="all">Todas as espécies</option><option value="Cao">Cães</option><option value="Gato">Gatos</option>
           </select>
         </div>
-        {filteredBreeds.length === 0 ? <EmptyState>Nenhuma raça corresponde aos filtros.</EmptyState> : (
-          <div className="overflow-x-auto">
+        {filteredBreeds.length === 0 ? <EmptyState>Nenhuma raça corresponde aos filtros.</EmptyState> : (<>
+          <ul className="divide-y divide-line border-t border-line sm:hidden">
+            {filteredBreeds.map((breed) => (
+              <li key={breed.id} className="flex items-center justify-between gap-3 px-5 py-3">
+                <p><span className="font-semibold text-ink">{breed.name}</span><span className="ml-2 font-mono text-xs text-subtle">#{breed.id}</span>
+                  <span className="block text-xs text-muted">{speciesLabel(breed.species)}</span></p>
+                <div className="flex shrink-0 gap-1">
+                  <button type="button" disabled={busy} onClick={() => openEditor(breed)} className={editLinkClass}>Editar</button>
+                  <button type="button" disabled={busy} onClick={() => void remove(breed)} className={deleteLinkClass}>Excluir</button>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <div className="hidden overflow-x-auto sm:block">
             <table className={tableClass}>
               <thead className={tableHeadClass}>
-                <tr><th className="px-4 py-2.5">ID</th><th className="px-4 py-2.5">Nome</th><th className="px-4 py-2.5">Espécie</th><th className="px-4 py-2.5 text-right">Ações</th></tr>
+                <tr><th className="px-5 py-3">ID</th><th className="px-5 py-3">Nome</th><th className="px-5 py-3">Espécie</th><th className="px-5 py-3 text-right">Ações</th></tr>
               </thead>
               <tbody>
                 {filteredBreeds.map((breed) => (
                   <tr key={breed.id} className={tableRowClass}>
-                    <td className="px-4 py-2.5 font-mono text-xs text-[#819caf]">#{breed.id}</td>
-                    <td className="px-4 py-2.5 font-medium text-[#b7dbf0]">{breed.name}</td>
-                    <td className="px-4 py-2.5">{speciesLabel(breed.species)}</td>
-                    <td className="whitespace-nowrap px-4 py-2.5 text-right text-xs">
-                      <button type="button" disabled={busy} onClick={() => openEditor(breed)} className="mr-3 text-[#9fd2ef] hover:underline disabled:opacity-50">Editar</button>
-                      <button type="button" disabled={busy} onClick={() => void remove(breed)} className="text-[#e6a4aa] hover:underline disabled:opacity-50">Excluir</button>
+                    <td className="px-5 py-3 font-mono text-xs text-subtle">#{breed.id}</td>
+                    <td className="px-5 py-3 font-semibold text-ink">{breed.name}</td>
+                    <td className="px-5 py-3">{speciesLabel(breed.species)}</td>
+                    <td className="whitespace-nowrap px-5 py-3 text-right text-xs">
+                      <button type="button" disabled={busy} onClick={() => openEditor(breed)} className={editLinkClass}>Editar</button>
+                      <button type="button" disabled={busy} onClick={() => void remove(breed)} className={deleteLinkClass}>Excluir</button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        )}
+        </>)}
       </Panel>
 
     </div>
@@ -147,18 +163,18 @@ function BreedForm({ breed, busy, onSave, onCancel }: {
   }
 
   return (
-    <form onSubmit={submit} className="space-y-5 p-4">
+    <form onSubmit={submit} className="space-y-5 px-5 pt-2 pb-5">
       <div className="grid gap-4 md:grid-cols-2">
-        <label className="block text-xs font-medium text-[#a9c2d2]">Nome *
+        <label className={labelClass}>Nome *
           <input className={`${fieldClass} mt-1.5`} value={name} onChange={(event) => setName(event.target.value)} maxLength={80} required />
         </label>
-        <label className="block text-xs font-medium text-[#a9c2d2]">Espécie *
+        <label className={labelClass}>Espécie *
           <select className={`${fieldClass} mt-1.5`} value={species} onChange={(event) => setSpecies(event.target.value as Species)}>
             <option value="Cao">Cão</option><option value="Gato">Gato</option>
           </select>
         </label>
       </div>
-      <div className="flex flex-wrap gap-2 border-t border-[#29465b] pt-4">
+      <div className="flex flex-wrap gap-2 border-t border-line pt-4">
         <button type="submit" disabled={busy} className={primaryButtonClass}>{busy ? 'Salvando...' : 'Salvar raça'}</button>
         <button type="button" disabled={busy} onClick={onCancel} className={secondaryButtonClass}>Cancelar</button>
       </div>
