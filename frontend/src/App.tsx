@@ -137,14 +137,12 @@ function App() {
           ))}
         </nav>
 
-        <img src="/photos/cao-no-mar.webp" alt="" width={480} height={600} decoding="async"
-          className="mt-auto hidden h-[clamp(9rem,calc(100vh-35rem),19rem)] w-full object-cover object-[50%_35%] lg:[@media(min-height:720px)]:block" />
-        <div className="hidden border-t border-white/15 px-6 py-5 text-xs lg:mt-auto lg:block lg:[@media(min-height:720px)]:mt-0">
-          {connected !== null && <p role="status" className="flex items-center gap-2 font-semibold">
+        {connected !== null && <div className="hidden border-t border-white/15 px-6 py-5 text-xs lg:mt-auto lg:block">
+          <p role="status" className="flex items-center gap-2 font-semibold">
             <span aria-hidden="true" className={`size-2 rounded-full ${connected ? 'bg-teal-line' : 'bg-sand'}`} />
             {connected ? 'API conectada' : 'Aguardando API'}
-          </p>}
-        </div>
+          </p>
+        </div>}
       </aside>
 
       <main className="min-w-0 flex-1">
@@ -204,32 +202,12 @@ function App() {
         </div>
 
         <footer className="mx-auto max-w-[1280px] px-5 sm:px-9">
-          <div className="mt-8 flex flex-col gap-4 border-t border-line py-6 sm:flex-row sm:items-center sm:gap-5">
-            <div className="flex shrink-0 gap-2">
-              <img src="/photos/cao-no-mar.webp" alt="" width={480} height={600} loading="lazy" decoding="async"
-                className="aspect-[4/3] w-32 rounded-[10px] object-cover object-[50%_35%] lg:[@media(min-height:720px)]:hidden" />
-              <img src="/photos/gato-na-praia.webp" alt="" width={480} height={360} loading="lazy" decoding="async"
-                className="aspect-[4/3] w-32 rounded-[10px] object-cover" />
-            </div>
-            <div className="max-w-[68ch] space-y-1 text-xs leading-5 text-muted">
-              <p className="text-[13px] font-semibold text-ink">Plumaris 1.0.0, gestão de adoções de cães e gatos</p>
-              <p>As fotografias são ilustrativas e não retratam animais cadastrados.</p>
-              <p>
-                Cão no mar: <a className={creditLinkClass} href="https://commons.wikimedia.org/wiki/File:Jack_Russell_Terrier_Eddi_in_the_Sea.JPG">Steve-65</a>,{' '}
-                <a className={creditLinkClass} href="https://creativecommons.org/licenses/by-sa/3.0/deed.pt-br">CC BY-SA 3.0</a>, recortada.
-                Gato na praia: <a className={creditLinkClass} href="https://commons.wikimedia.org/wiki/File:Beach_Cat_(4159138695).jpg">Jennifer C.</a>,{' '}
-                <a className={creditLinkClass} href="https://creativecommons.org/licenses/by/2.0/deed.pt-br">CC BY 2.0</a>, recortada.
-                Ambas via Wikimedia Commons.
-              </p>
-            </div>
-          </div>
+          <p className="mt-8 border-t border-line py-6 text-[13px] text-muted">Plumaris 1.0.0, gestão de adoções de cães e gatos</p>
         </footer>
       </main>
     </div>
   )
 }
-
-const creditLinkClass = 'underline decoration-line-strong underline-offset-2 hover:text-link-strong hover:decoration-current'
 
 const themeOptions: { value: Theme; label: string; Icon: typeof SunIcon }[] = [
   { value: 'light', label: 'Claro', Icon: SunIcon },
