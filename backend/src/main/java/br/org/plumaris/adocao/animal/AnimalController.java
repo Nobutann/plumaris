@@ -1,5 +1,7 @@
 package br.org.plumaris.adocao.animal;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.List;
 
 import jakarta.validation.Valid;
@@ -74,7 +76,7 @@ public class AnimalController {
     @ResponseStatus(HttpStatus.CREATED)
     public AnimalResponse create(@Valid @RequestBody AnimalRequest request) {
         validateReferences(request);
-        int id = animalRepository.create(request);
+        int id = animalRepository.create(request, validatePhotoUrl(request.photoUrl()));
         return animalRepository.findById(id)
                 .orElseThrow(() -> new IllegalStateException("Created animal not found"));
     }
@@ -83,7 +85,7 @@ public class AnimalController {
     public AnimalResponse update(@PathVariable int id, @Valid @RequestBody AnimalRequest request) {
         findById(id);
         validateReferences(request);
-        animalRepository.update(id, request);
+        animalRepository.update(id, request, validatePhotoUrl(request.photoUrl()));
         return findById(id);
     }
 
@@ -111,6 +113,24 @@ public class AnimalController {
 
     private static Boolean parseAvailability(String value) {
         return value == null ? null : Boolean.valueOf(QueryParameter.option("available", value, "true", "false"));
+    }
+
+    private static String validatePhotoUrl(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        String url = value.strip();
+        try {
+            URI uri = new URI(url);
+            if (uri.getHost() != null && uri.getRawUserInfo() == null
+                    && ("https".equalsIgnoreCase(uri.getScheme()) || "http".equalsIgnoreCase(uri.getScheme()))) {
+                return url;
+            }
+        } catch (URISyntaxException ignored) {
+            // Return the same validation error for malformed and unsupported URLs.
+        }
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe uma URL de foto válida (http ou https).");
     }
 
     private void validateReferences(AnimalRequest request) {

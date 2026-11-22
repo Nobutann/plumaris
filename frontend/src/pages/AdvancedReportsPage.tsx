@@ -1,6 +1,7 @@
 import { Children, cloneElement, isValidElement, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import type { FormEvent, ReactNode, Ref } from 'react'
 import { api } from '../api'
+import { AnimalPhoto } from '../components/AnimalPhoto'
 import { ReportFilterForm } from './ReportFilterForm'
 import { ageGroupLabel, dateLabel, sexLabel, sizeLabel, speciesLabel } from '../format'
 import type {
@@ -735,7 +736,15 @@ function AnimalResults({ animals }: { animals: Animal[] }) {
   return (
     <ReportTable headers={['ID', 'Animal', 'Espécie', 'Raça', 'Centro de adoção', 'Situação']}>
       {animals.map((animal) => <tr key={animal.id} className={tableRowClass}>
-        <Cell mono>#{animal.id}</Cell><Cell highlight>{animal.name}</Cell><Cell>{speciesLabel(animal.species)}</Cell><Cell>{animal.breedName || '—'}</Cell>
+        <Cell mono>#{animal.id}</Cell>
+        <Cell highlight>
+          <div className="flex items-center gap-3">
+            <AnimalPhoto animal={animal} showStatus />
+            <span>{animal.name}</span>
+          </div>
+        </Cell>
+        <Cell>{speciesLabel(animal.species)}</Cell>
+        <Cell>{animal.breedName || '—'}</Cell>
         <Cell>{animal.centerName} <span className="font-mono text-xs text-subtle">#{animal.centerId}</span></Cell>
         <Cell><Availability available={animal.available} /></Cell>
       </tr>)}

@@ -143,12 +143,12 @@ export const api = {
     return request<UserSummary[]>('/usuarios', { signal })
   },
 
-  createAnimal(input: AnimalInput): Promise<Animal> {
-    return request<Animal>('/animais', { method: 'POST', body: JSON.stringify(input) })
+  createAnimal(input: AnimalInput, photoUrl?: string): Promise<Animal> {
+    return request<Animal>('/animais', { method: 'POST', body: JSON.stringify({ ...input, photoUrl }) })
   },
 
-  updateAnimal(id: number, input: AnimalInput): Promise<Animal> {
-    return request<Animal>(`/animais/${id}`, { method: 'PUT', body: JSON.stringify(input) })
+  updateAnimal(id: number, input: AnimalInput, photoUrl?: string): Promise<Animal> {
+    return request<Animal>(`/animais/${id}`, { method: 'PUT', body: JSON.stringify({ ...input, photoUrl }) })
   },
 
   deleteAnimal(id: number): Promise<void> {

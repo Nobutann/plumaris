@@ -14,6 +14,7 @@ export interface Animal {
   centerName: string
   breedId: number | null
   breedName: string | null
+  photoUrl: string | null
 }
 
 export interface AnimalInput {

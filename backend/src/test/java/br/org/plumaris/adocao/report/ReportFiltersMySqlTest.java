@@ -1,6 +1,7 @@
 package br.org.plumaris.adocao.report;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 
 import java.nio.file.Files;
@@ -18,9 +19,11 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import br.org.plumaris.adocao.animal.AnimalAgeGroupSummary;
 import br.org.plumaris.adocao.animal.AnimalRepository;
+import br.org.plumaris.adocao.animal.AnimalRequest;
 import br.org.plumaris.adocao.animal.AnimalResponse;
 import br.org.plumaris.adocao.animal.AnimalSpeciesSummary;
 import br.org.plumaris.adocao.database.DatabaseConnectionFactory;
+import br.org.plumaris.adocao.database.DatabaseException;
 
 @EnabledIfEnvironmentVariable(named = "PLUMARIS_TEST_MYSQL_URL", matches = "jdbc:mysql://[^/?]+/?")
 class ReportFiltersMySqlTest {
@@ -59,6 +62,34 @@ class ReportFiltersMySqlTest {
             try (Connection connection = admin.openConnection()) {
                 execute(connection, "DROP DATABASE " + SCHEMA);
             }
+        }
+    }
+
+    @Test
+    void savesAndReplacesAnimalPhotoAndRollsBackWhenPhotoCannotBeSaved() {
+        String photoUrl = "https://example.org/mel.jpg";
+        AnimalRequest request = new AnimalRequest("Mel com foto", "Gato", null, null, null,
+                null, null, true, 10, null, photoUrl);
+
+        int id = animals.create(request, photoUrl);
+        try {
+            assertThat(animals.findById(id)).get().extracting(AnimalResponse::photoUrl).isEqualTo(photoUrl);
+            assertThat(animals.findAll("Gato", 10, true))
+                    .extracting(AnimalResponse::id, AnimalResponse::photoUrl)
+                    .contains(tuple(id, photoUrl));
+
+            assertThatThrownBy(() -> animals.create(request, "file:///tmp/mel.jpg"))
+                    .isInstanceOf(DatabaseException.class);
+            assertThat(animals.findAll("Gato", 10, true))
+                    .extracting(AnimalResponse::id)
+                    .containsExactly(id);
+
+            String replacement = "https://example.org/mel-nova.jpg";
+            animals.update(id, request, replacement);
+            animals.update(id, request, null);
+            assertThat(animals.findById(id)).get().extracting(AnimalResponse::photoUrl).isEqualTo(replacement);
+        } finally {
+            animals.delete(id);
         }
     }
 

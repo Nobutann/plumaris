@@ -15,6 +15,7 @@ public record AnimalResponse(
         int centerId,
         String centerName,
         Integer breedId,
-        String breedName
+        String breedName,
+        String photoUrl
 ) {
 }

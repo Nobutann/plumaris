@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { api } from '../api'
+import { AnimalPhoto } from '../components/AnimalPhoto'
 import { dateLabel, sexLabel, sizeLabel, speciesLabel } from '../format'
 import type { Animal, AnimalInput, Breed, Center, Species } from '../types'
 import {
@@ -77,8 +78,9 @@ export function AnimalsPage({ animals, breeds, centers, refresh }: AnimalsPagePr
     if (editor === target) editorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
+  const term = search.trim().toLocaleLowerCase('pt-BR')
+  const searching = term.length > 0
   const filteredAnimals = animals.filter((animal) => {
-    const term = search.trim().toLocaleLowerCase('pt-BR')
     const matchesSearch = !term || [animal.name, animal.breedName, animal.centerName, String(animal.id)]
       .some((value) => value?.toLocaleLowerCase('pt-BR').includes(term))
     return matchesSearch
@@ -86,17 +88,17 @@ export function AnimalsPage({ animals, breeds, centers, refresh }: AnimalsPagePr
       && (availabilityFilter === 'all' || String(animal.available) === availabilityFilter)
   })
 
-  async function save(input: AnimalInput) {
+  async function save(input: AnimalInput, photoUrl?: string) {
     setBusy(true)
     setError('')
     try {
       if (editor === 'new') {
-        await api.createAnimal(input)
+        await api.createAnimal(input, photoUrl)
       } else if (editor) {
-        await api.updateAnimal(editor.id, input)
+        await api.updateAnimal(editor.id, input, photoUrl)
       }
-      await refresh()
       setEditor(null)
+      await refresh()
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Não foi possível salvar o animal.')
     } finally {
@@ -142,7 +144,7 @@ export function AnimalsPage({ animals, breeds, centers, refresh }: AnimalsPagePr
       <Panel
         title="Animais cadastrados"
         detail={`${filteredAnimals.length} de ${animals.length} registros`}
-        action={<button type="button" onClick={() => openEditor('new')} className={primaryButtonClass}><PlusIcon /> Novo animal</button>}
+        action={<button type="button" disabled={busy} onClick={() => openEditor('new')} className={primaryButtonClass}><PlusIcon /> Novo animal</button>}
       >
         <div className="grid gap-3 border-y border-sand-line bg-sand-wash px-5 py-4 md:grid-cols-[1fr_200px_200px]">
           <label className="sr-only" htmlFor="animal-search">Buscar animais</label>
@@ -161,24 +163,29 @@ export function AnimalsPage({ animals, breeds, centers, refresh }: AnimalsPagePr
           </select>
         </div>
         {filteredAnimals.length === 0 ? <EmptyState>Nenhum animal corresponde aos filtros.</EmptyState> : (<>
-          <ul className="divide-y divide-line border-t border-line sm:hidden">
+          <ul className={`divide-y divide-line border-t border-line ${searching ? '' : 'sm:hidden'}`}>
             {filteredAnimals.map((animal) => (
-              <li key={animal.id} className="space-y-1.5 px-5 py-4">
-                <div className="flex items-start justify-between gap-3">
-                  <p><span className="font-semibold text-ink">{animal.name}</span><span className="ml-2 font-mono text-xs text-subtle">#{animal.id}</span></p>
-                  <Availability available={animal.available} />
-                </div>
-                <p className="text-sm text-ink">{speciesLabel(animal.species)} · {animal.breedName || 'Raça não informada'}</p>
-                <p className="text-xs text-muted">{sexLabel(animal.sex)} · {sizeLabel(animal.size)} · Nasc.: {dateLabel(animal.birthDate)}</p>
-                <p className="text-xs text-muted">{animal.centerName} <span className="font-mono text-subtle">#{animal.centerId}</span></p>
-                <div className="-ml-2 flex gap-1 pt-1">
-                  <button type="button" disabled={busy} onClick={() => openEditor(animal)} className={editLinkClass}>Editar</button>
-                  <button type="button" disabled={busy} onClick={() => void remove(animal)} className={deleteLinkClass}>Excluir</button>
+              <li key={animal.id} className="flex items-start gap-4 px-5 py-4">
+                {searching && <AnimalPhoto animal={animal} expanded />}
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    {searching ? <AnimalName animal={animal} /> : <AnimalIdentity animal={animal} />}
+                    <Availability available={animal.available} />
+                  </div>
+                  <p className="text-sm text-ink">{speciesLabel(animal.species)} · {animal.breedName || 'Raça não informada'}</p>
+                  <p className="text-xs text-muted">{sexLabel(animal.sex)} · {sizeLabel(animal.size)} · Nasc.: {dateLabel(animal.birthDate)}</p>
+                  <p className="text-xs text-muted">{animal.centerName} <span className="font-mono text-subtle">#{animal.centerId}</span></p>
+                  {searching && animal.color && <p className="text-sm text-ink">Cor: {animal.color}</p>}
+                  {searching && animal.description && <p className="whitespace-pre-wrap break-words text-sm text-muted">{animal.description}</p>}
+                  <div className="-ml-2 flex gap-1 pt-1">
+                    <button type="button" disabled={busy} onClick={() => openEditor(animal)} className={editLinkClass}>Editar</button>
+                    <button type="button" disabled={busy} onClick={() => void remove(animal)} className={deleteLinkClass}>Excluir</button>
+                  </div>
                 </div>
               </li>
             ))}
           </ul>
-          <div className="hidden overflow-x-auto sm:block">
+          {!searching && <div className="hidden overflow-x-auto sm:block">
             <table className={tableClass}>
               <thead className={tableHeadClass}>
                 <tr><th className="px-5 py-3">Animal</th><th className="px-5 py-3">Espécie / raça</th><th className="px-5 py-3">Características</th><th className="px-5 py-3">Centro</th><th className="px-5 py-3">Situação</th><th className="px-5 py-3 text-right">Ações</th></tr>
@@ -186,7 +193,7 @@ export function AnimalsPage({ animals, breeds, centers, refresh }: AnimalsPagePr
               <tbody>
                 {filteredAnimals.map((animal) => (
                   <tr key={animal.id} className={tableRowClass}>
-                    <td className="px-5 py-3"><span className="font-semibold text-ink">{animal.name}</span><span className="ml-2 font-mono text-xs text-subtle">#{animal.id}</span></td>
+                    <td className="px-5 py-3"><AnimalIdentity animal={animal} /></td>
                     <td className="px-5 py-3">{speciesLabel(animal.species)}<div className="text-xs text-subtle">{animal.breedName || 'Raça não informada'}</div></td>
                     <td className="px-5 py-3">{sexLabel(animal.sex)} · {sizeLabel(animal.size)}<div className="text-xs text-subtle">Nasc.: {dateLabel(animal.birthDate)}</div></td>
                     <td className="px-5 py-3">{animal.centerName}<div className="font-mono text-xs text-subtle">#{animal.centerId}</div></td>
@@ -199,11 +206,26 @@ export function AnimalsPage({ animals, breeds, centers, refresh }: AnimalsPagePr
                 ))}
               </tbody>
             </table>
-          </div>
+          </div>}
         </>)}
       </Panel>
 
     </div>
+  )
+}
+
+function AnimalIdentity({ animal }: { animal: Animal }) {
+  return (
+    <div className="flex items-center gap-3">
+      <AnimalPhoto animal={animal} />
+      <AnimalName animal={animal} />
+    </div>
+  )
+}
+
+function AnimalName({ animal }: { animal: Animal }) {
+  return (
+    <p><span className="font-semibold text-ink">{animal.name}</span><span className="ml-2 font-mono text-xs text-subtle">#{animal.id}</span></p>
   )
 }
 
@@ -213,9 +235,10 @@ function AnimalForm({ animal, breeds, centers, busy, onCancel, onSave }: {
   centers: Center[]
   busy: boolean
   onCancel: () => void
-  onSave: (input: AnimalInput) => Promise<void>
+  onSave: (input: AnimalInput, photoUrl?: string) => Promise<void>
 }) {
   const [draft, setDraft] = useState(() => draftFromAnimal(animal))
+  const [photoUrl, setPhotoUrl] = useState('')
   const matchingBreeds = breeds.filter((breed) => breed.species === draft.species)
 
   function update<Key extends keyof AnimalDraft>(key: Key, value: AnimalDraft[Key]) {
@@ -236,7 +259,7 @@ function AnimalForm({ animal, breeds, centers, busy, onCancel, onSave }: {
       centerId: Number(draft.centerId),
       breedId: draft.breedId ? Number(draft.breedId) : null,
     }
-    void onSave(input)
+    void onSave(input, photoUrl.trim() || undefined)
   }
 
   return (
@@ -284,6 +307,17 @@ function AnimalForm({ animal, breeds, centers, busy, onCancel, onSave }: {
           </select>
         </label>
       </div>
+      <label className={labelClass}>{animal?.photoUrl ? 'Nova URL da foto (opcional)' : 'URL da foto (opcional)'}
+        <input
+          className={`${fieldClass} mt-1.5`}
+          type="url"
+          maxLength={500}
+          placeholder="https://exemplo.com/foto.jpg"
+          value={photoUrl}
+          onChange={(event) => setPhotoUrl(event.target.value)}
+        />
+        <span className="mt-1 block text-xs font-normal text-muted">Cole o endereço da imagem ou o link do resultado no Google Imagens.</span>
+      </label>
       <label className={labelClass}>Descrição
         <textarea className={`${fieldClass} mt-1.5 min-h-24 resize-y`} value={draft.description} onChange={(event) => update('description', event.target.value)} />
       </label>

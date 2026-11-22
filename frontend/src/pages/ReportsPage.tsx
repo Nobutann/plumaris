@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { api } from '../api'
+import { AnimalPhoto } from '../components/AnimalPhoto'
 import { ageGroupLabel, speciesLabel } from '../format'
 import type { Animal, DashboardData } from '../types'
 import {
@@ -150,7 +151,12 @@ function AnimalResults({ animals }: { animals: Animal[] }) {
       <thead className={tableHeadClass}><tr><th className="px-5 py-3">ID</th><th className="px-5 py-3">Animal</th><th className="px-5 py-3">Espécie</th><th className="px-5 py-3">Raça</th><th className="px-5 py-3">Centro de adoção</th><th className="px-5 py-3">Situação</th></tr></thead>
       <tbody>{animals.map((animal) => <tr key={animal.id} className={tableRowClass}>
         <td className="px-5 py-3 font-mono text-xs text-subtle">#{animal.id}</td>
-        <td className="px-5 py-3 font-semibold text-ink">{animal.name}</td>
+        <td className="px-5 py-3 font-semibold text-ink">
+          <div className="flex items-center gap-3">
+            <AnimalPhoto animal={animal} showStatus />
+            <span>{animal.name}</span>
+          </div>
+        </td>
         <td className="px-5 py-3">{speciesLabel(animal.species)}</td>
         <td className="px-5 py-3">{animal.breedName || '—'}</td>
         <td className="px-5 py-3">{animal.centerName}<span className="ml-1 font-mono text-xs text-subtle">#{animal.centerId}</span></td>

@@ -39,7 +39,9 @@ public class AnimalRepository {
                 a.idCentro,
                 c.nome AS centroNome,
                 a.idRaca,
-                r.nome AS racaNome
+                r.nome AS racaNome,
+                (SELECT f.url FROM Foto_Animal f
+                    WHERE f.idAnimal = a.idAnimal ORDER BY f.numeroFoto LIMIT 1) AS fotoUrl
             FROM Animal a
             JOIN Centro_Adocao c ON c.idConta = a.idCentro
             LEFT JOIN Raca r ON r.idRaca = a.idRaca
@@ -61,7 +63,9 @@ public class AnimalRepository {
                 a.idCentro,
                 c.nome AS centroNome,
                 a.idRaca,
-                r.nome AS racaNome
+                r.nome AS racaNome,
+                (SELECT f.url FROM Foto_Animal f
+                    WHERE f.idAnimal = a.idAnimal ORDER BY f.numeroFoto LIMIT 1) AS fotoUrl
             FROM Animal a
             JOIN Centro_Adocao c ON c.idConta = a.idCentro
             LEFT JOIN Raca r ON r.idRaca = a.idRaca
@@ -110,7 +114,9 @@ public class AnimalRepository {
                 a.idCentro,
                 c.nome AS centroNome,
                 a.idRaca,
-                r.nome AS racaNome
+                r.nome AS racaNome,
+                (SELECT f.url FROM Foto_Animal f
+                    WHERE f.idAnimal = a.idAnimal ORDER BY f.numeroFoto LIMIT 1) AS fotoUrl
             FROM Preferencia p
             JOIN Animal a ON a.disponibilidade = 1
                 AND (p.especieDesejada IS NULL OR a.especie = p.especieDesejada)
@@ -252,9 +258,25 @@ public class AnimalRepository {
         }
     }
 
-    public int create(AnimalRequest request) {
-        try (Connection connection = connectionFactory.openConnection();
-                PreparedStatement statement = connection.prepareStatement(INSERT_SQL, Statement.RETURN_GENERATED_KEYS)) {
+    public int create(AnimalRequest request, String photoUrl) {
+        try (Connection connection = connectionFactory.openConnection()) {
+            connection.setAutoCommit(false);
+            try {
+                int id = insertAnimal(connection, request);
+                savePhoto(connection, id, photoUrl);
+                connection.commit();
+                return id;
+            } catch (SQLException | RuntimeException exception) {
+                rollback(connection, exception);
+                throw exception;
+            }
+        } catch (SQLException exception) {
+            throw DatabaseException.from(exception);
+        }
+    }
+
+    private static int insertAnimal(Connection connection, AnimalRequest request) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(INSERT_SQL, Statement.RETURN_GENERATED_KEYS)) {
             bindAnimal(statement, request);
             statement.executeUpdate();
             try (ResultSet keys = statement.getGeneratedKeys()) {
@@ -263,19 +285,48 @@ public class AnimalRepository {
                 }
                 return keys.getInt(1);
             }
+        }
+    }
+
+    public void update(int id, AnimalRequest request, String photoUrl) {
+        try (Connection connection = connectionFactory.openConnection();
+                PreparedStatement statement = connection.prepareStatement(UPDATE_SQL)) {
+            connection.setAutoCommit(false);
+            try {
+                bindAnimal(statement, request);
+                statement.setInt(11, id);
+                statement.executeUpdate();
+                savePhoto(connection, id, photoUrl);
+                connection.commit();
+            } catch (SQLException | RuntimeException exception) {
+                rollback(connection, exception);
+                throw exception;
+            }
         } catch (SQLException exception) {
             throw DatabaseException.from(exception);
         }
     }
 
-    public void update(int id, AnimalRequest request) {
-        try (Connection connection = connectionFactory.openConnection();
-                PreparedStatement statement = connection.prepareStatement(UPDATE_SQL)) {
-            bindAnimal(statement, request);
-            statement.setInt(11, id);
+    private static void savePhoto(Connection connection, int id, String photoUrl) throws SQLException {
+        if (photoUrl == null) {
+            return;
+        }
+        try (PreparedStatement statement = connection.prepareStatement("""
+                INSERT INTO Foto_Animal (idAnimal, numeroFoto, url) VALUES (?, 1, ?)
+                ON DUPLICATE KEY UPDATE url = ?
+                """)) {
+            statement.setInt(1, id);
+            statement.setString(2, photoUrl);
+            statement.setString(3, photoUrl);
             statement.executeUpdate();
-        } catch (SQLException exception) {
-            throw DatabaseException.from(exception);
+        }
+    }
+
+    private static void rollback(Connection connection, Exception exception) {
+        try {
+            connection.rollback();
+        } catch (SQLException rollbackFailure) {
+            exception.addSuppressed(rollbackFailure);
         }
     }
 
@@ -371,7 +422,8 @@ public class AnimalRepository {
                 resultSet.getInt("idCentro"),
                 resultSet.getString("centroNome"),
                 resultSet.getObject("idRaca", Integer.class),
-                resultSet.getString("racaNome")
+                resultSet.getString("racaNome"),
+                resultSet.getString("fotoUrl")
         );
     }
 }
