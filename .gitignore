@@ -41,3 +41,6 @@ logs/
 **/*.tmp
 .DS_Store
 Thumbs.db
+
+# Cópias locais feitas antes de alterações
+_backup_frontend_original/
