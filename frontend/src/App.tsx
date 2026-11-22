@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from './api'
-import { ErrorMessage, MoonIcon, RefreshIcon, SunIcon, secondaryButtonClass } from './components/ui'
+import {
+  BuildingIcon, DashboardIcon, ErrorMessage, HeartIcon, MoonIcon, PawIcon, SearchIcon, SunIcon, TagIcon,
+  secondaryButtonClass,
+} from './components/ui'
+import { Logo } from './components/Brand'
+import { RefreshButton } from './components/RefreshButton'
 import { AnimalsPage } from './pages/AnimalsPage'
 import { BreedsPage } from './pages/BreedsPage'
 import { CentersPage } from './pages/CentersPage'
@@ -13,22 +18,22 @@ import type { CatalogData, DashboardFilters } from './types'
 
 type Page = 'dashboard' | 'animals' | 'breeds' | 'reports' | 'preferences' | 'centers'
 
-const navigation: { id: Page; label: string; number: string }[] = [
-  { id: 'dashboard', label: 'Painel', number: '01' },
-  { id: 'animals', label: 'Animais', number: '02' },
-  { id: 'breeds', label: 'Raças', number: '03' },
-  { id: 'reports', label: 'Consultas', number: '04' },
-  { id: 'preferences', label: 'Preferências', number: '05' },
-  { id: 'centers', label: 'Centros', number: '06' },
+const navigation: { id: Page; label: string; Icon: typeof PawIcon }[] = [
+  { id: 'dashboard', label: 'Painel', Icon: DashboardIcon },
+  { id: 'animals', label: 'Animais', Icon: PawIcon },
+  { id: 'breeds', label: 'Raças', Icon: TagIcon },
+  { id: 'centers', label: 'Centros', Icon: BuildingIcon },
+  { id: 'preferences', label: 'Preferências', Icon: HeartIcon },
+  { id: 'reports', label: 'Relatórios', Icon: SearchIcon },
 ]
 
 const pageCopy: Record<Page, { title: string; description: string }> = {
-  dashboard: { title: 'Dashboard estatístico', description: 'Animais, centros de adoção e interesses em adoção.' },
-  animals: { title: 'Animais', description: 'Consulte, cadastre e mantenha os registros do catálogo.' },
-  breeds: { title: 'Raças', description: 'Gerencie as raças disponíveis para cães e gatos.' },
-  centers: { title: 'Centros de adoção', description: 'Gerencie os centros, seus endereços e e-mails de conta.' },
-  preferences: { title: 'Preferências', description: 'Gerencie os critérios de adoção dos usuários.' },
-  reports: { title: 'Consultas', description: 'Explore consultas SQL avançadas, visões, funções, procedimentos e auditoria.' },
+  dashboard: { title: 'Visão geral', description: 'Um retrato da rede de adoção: animais, centros e pessoas interessadas.' },
+  animals: { title: 'Animais', description: 'Cadastre os animais acolhidos e acompanhe quem está pronto para um novo lar.' },
+  breeds: { title: 'Raças', description: 'Lista de raças de cães e gatos usada nos cadastros e nas preferências.' },
+  centers: { title: 'Centros de adoção', description: 'As unidades da rede, com endereço e e-mail de contato.' },
+  preferences: { title: 'Preferências', description: 'O que cada pessoa procura em um novo companheiro.' },
+  reports: { title: 'Relatórios', description: 'Acompanhe a rede, encontre o animal certo para cada pessoa e registre adoções.' },
 }
 
 function App() {
@@ -93,11 +98,9 @@ function App() {
   }
 
   function refreshCurrentPage() {
-    if (page === 'reports' && refreshReports.current) {
-      void refreshReports.current()
-    } else {
-      retry()
-    }
+    if (page === 'reports' && refreshReports.current) return refreshReports.current()
+    setLoading(true)
+    return refresh()
   }
 
   function navigate(nextPage: Page) {
@@ -110,71 +113,67 @@ function App() {
 
   return (
     <div className="min-h-screen bg-ground text-ink lg:flex">
-      <aside className="bg-rail text-white lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-[236px] lg:shrink-0 lg:flex-col">
-        <div className="flex items-center justify-between gap-3 px-5 pt-4 pb-2 lg:block lg:border-b lg:border-white/15 lg:px-6 lg:pt-7 lg:pb-5">
-          <div className="flex items-center gap-3">
-            <BrandMark />
-            <div>
-              <span className="block text-xl leading-tight font-bold">Plumaris</span>
-              <span className="block text-xs text-rail-muted">Gestão de adoções</span>
-            </div>
-          </div>
-          <ThemeToggle theme={theme} onChange={setTheme} />
+      <aside className="border-b border-rail-line bg-rail text-rail-ink lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-[15.75rem] lg:shrink-0 lg:flex-col lg:border-r lg:border-b-0">
+        <div className="flex items-center justify-between gap-3 px-5 pt-4 pb-3 lg:px-5 lg:pt-6 lg:pb-6">
+          <Logo />
+          <div className="lg:hidden"><ThemeToggle theme={theme} onChange={setTheme} /></div>
         </div>
 
-        <nav aria-label="Navegação principal" className="flex gap-1 overflow-x-auto px-3 pb-3 lg:block lg:space-y-1 lg:overflow-visible lg:py-4">
-          {navigation.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => navigate(item.id)}
-              aria-current={page === item.id ? 'page' : undefined}
-              className={`flex shrink-0 items-center gap-3 rounded-[10px] px-3 py-2.5 text-left text-[15px] transition-colors focus-visible:outline-white lg:w-full ${page === item.id ? 'bg-rail-active font-semibold text-rail-active-ink shadow-raised ring-1 ring-rail-active-edge ring-inset' : 'text-white hover:bg-white/12'}`}
-            >
-              <span className={`font-mono text-xs ${page === item.id ? 'text-rail-active-number' : 'text-rail-muted'}`}>{item.number}</span>
-              {item.label}
-            </button>
-          ))}
+        <nav aria-label="Navegação principal" className="flex gap-1 overflow-x-auto px-3 pb-3 lg:block lg:space-y-0.5 lg:overflow-visible lg:pb-0">
+          {navigation.map(({ id, label, Icon }) => {
+            const active = page === id
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => navigate(id)}
+                aria-current={active ? 'page' : undefined}
+                className={`group relative flex shrink-0 items-center gap-3 rounded-[0.625rem] px-3 py-2 text-left text-[0.9062rem] transition-colors lg:w-full ${active ? 'bg-rail-active font-semibold text-rail-active-ink' : 'text-rail-ink/80 hover:bg-rail-hover hover:text-rail-ink'}`}
+              >
+                {active && <span aria-hidden="true" className="absolute top-1/2 -left-3 hidden h-5 w-[0.1875rem] -translate-y-1/2 rounded-r-full bg-rail-accent lg:block" />}
+                <Icon className={`size-[1.125rem] shrink-0 ${active ? 'text-rail-active-ink' : 'text-rail-muted group-hover:text-rail-ink'}`} />
+                {label}
+              </button>
+            )
+          })}
         </nav>
 
-        {connected !== null && <div className="hidden border-t border-white/15 px-6 py-5 text-xs lg:mt-auto lg:block">
-          <p role="status" className="flex items-center gap-2 font-semibold">
-            <span aria-hidden="true" className={`size-2 rounded-full ${connected ? 'bg-teal-line' : 'bg-sand'}`} />
-            {connected ? 'API conectada' : 'Aguardando API'}
-          </p>
-        </div>}
+        <div className="hidden space-y-3 border-t border-rail-line px-5 py-4 lg:mt-auto lg:block">
+          {connected !== null && (
+            <p role="status" className="flex items-center gap-2 text-xs font-semibold text-rail-muted">
+              <span aria-hidden="true" className="relative flex size-2">
+                {connected && <span className="absolute inline-flex size-full animate-ping rounded-full bg-teal opacity-50 motion-reduce:animate-none" />}
+                <span className={`relative inline-flex size-2 rounded-full ${connected ? 'bg-teal' : 'bg-sand'}`} />
+              </span>
+              {connected ? 'Sistema online' : 'Conectando…'}
+            </p>
+          )}
+          <ThemeToggle theme={theme} onChange={setTheme} />
+        </div>
       </aside>
 
       <main className="min-w-0 flex-1">
-        <header className="relative border-b border-line bg-paper">
-          <div className="mx-auto flex max-w-[1280px] flex-wrap items-end justify-between gap-4 px-5 pt-6 pb-5 sm:px-9 sm:pt-7">
+        <header className="sticky top-0 z-20 border-b border-line bg-paper/85 backdrop-blur-md">
+          <div className="mx-auto flex max-w-[80rem] flex-wrap items-center justify-between gap-4 px-5 py-5 sm:px-9">
             <div className="min-w-0">
-              <h1 className="text-[26px] leading-tight font-bold tracking-[-0.01em] text-balance">{pageCopy[page].title}</h1>
+              <h1 className="text-[1.5rem] leading-tight font-bold tracking-[-0.02em] text-balance">{pageCopy[page].title}</h1>
               <p className="mt-1 text-sm text-muted">{pageCopy[page].description}</p>
             </div>
-            {page === 'dashboard' && <button type="button" onClick={refreshDashboard} className={secondaryButtonClass}>
-              <RefreshIcon /> Atualizar dados
-            </button>}
-            {page === 'preferences' && <button type="button" onClick={() => refreshPreferences.current?.()} disabled={preferencesRefreshLocked} className={secondaryButtonClass}>
-              <RefreshIcon /> Atualizar dados
-            </button>}
-            {showsCatalog && <button type="button" onClick={refreshCurrentPage} disabled={loading} className={secondaryButtonClass}>
-              <RefreshIcon className={`size-4 ${loading ? 'animate-spin motion-reduce:animate-none' : ''}`} />
-              {loading ? 'Atualizando...' : 'Atualizar dados'}
-            </button>}
+            {page === 'dashboard' && <RefreshButton key="dashboard" onRefresh={refreshDashboard} />}
+            {page === 'preferences' && <RefreshButton key="preferences" onRefresh={() => refreshPreferences.current?.()} disabled={preferencesRefreshLocked} />}
+            {showsCatalog && <RefreshButton key="catalog" onRefresh={refreshCurrentPage} busy={loading} />}
           </div>
-          <span aria-hidden="true" className="absolute -bottom-px left-5 h-[3px] w-14 rounded-full bg-teal sm:left-9" />
         </header>
 
-        <div className="mx-auto max-w-[1280px] space-y-5 px-5 py-6 sm:px-9">
+        <div className="mx-auto max-w-[80rem] space-y-5 px-5 py-7 sm:px-9">
           {page === 'preferences' && (
             <PreferencesPage refreshRef={refreshPreferences} onRefreshLockChange={setPreferencesRefreshLocked} onConnectionChange={setConnected} />
           )}
           {showsCatalog && error && (page !== 'reports' || !data) && <ErrorMessage message={error} />}
-          {showsCatalog && loading && !data && <div role="status" className="rounded-[14px] border border-line bg-paper p-10 text-center text-sm text-muted">Carregando dados do banco...</div>}
+          {showsCatalog && loading && !data && <div role="status" className="rounded-2xl border border-line bg-paper p-10 text-center text-sm text-muted shadow-card">Carregando informações…</div>}
           {showsCatalog && !loading && !data && (
-            <div className="rounded-[14px] border border-line bg-paper p-8 text-center">
-              <p className="text-sm text-ink">Inicie a API Spring Boot na porta 8080 e tente novamente.</p>
+            <div className="rounded-2xl border border-line bg-paper p-8 text-center shadow-card">
+              <p className="text-sm text-ink">Não foi possível carregar as informações agora. Verifique a conexão e tente novamente.</p>
               <button type="button" onClick={retry} className={`${secondaryButtonClass} mt-4`}>Tentar novamente</button>
             </div>
           )}
@@ -201,8 +200,10 @@ function App() {
           )}
         </div>
 
-        <footer className="mx-auto max-w-[1280px] px-5 sm:px-9">
-          <p className="mt-8 border-t border-line py-6 text-[13px] text-muted">Plumaris 1.0.0, gestão de adoções de cães e gatos</p>
+        <footer className="mx-auto max-w-[80rem] px-5 sm:px-9">
+          <p className="mt-8 flex items-center justify-between gap-3 border-t border-line py-6 text-[0.8125rem] text-muted">
+            <span>Plumaris 1.0.0, gestão de adoções de cães e gatos</span>
+          </p>
         </footer>
       </main>
     </div>
@@ -216,27 +217,16 @@ const themeOptions: { value: Theme; label: string; Icon: typeof SunIcon }[] = [
 
 function ThemeToggle({ theme, onChange }: { theme: Theme; onChange: (theme: Theme) => void }) {
   return (
-    <fieldset className="flex shrink-0 rounded-full border border-white/25 p-0.5 lg:mt-5 lg:w-full">
+    <fieldset className="flex shrink-0 rounded-[0.625rem] bg-rail-hover p-0.5 lg:w-full">
       <legend className="sr-only">Tema da interface</legend>
       {themeOptions.map(({ value, label, Icon }) => (
-        <label key={value} className={`flex min-h-8 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-full px-3 text-xs font-semibold transition-colors has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-white ${theme === value ? 'bg-rail-active text-rail-active-ink shadow-raised ring-1 ring-rail-active-edge ring-inset' : 'text-rail-muted hover:bg-white/12 hover:text-white'}`}>
+        <label key={value} className={`flex min-h-8 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-colors has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-rail-accent ${theme === value ? 'bg-rail-active text-rail-active-ink shadow-rest' : 'text-rail-muted hover:text-rail-ink'}`}>
           <input type="radio" name="tema" value={value} checked={theme === value} onChange={() => onChange(value)} className="sr-only" />
           <Icon className="size-3.5" />
           {label}
         </label>
       ))}
     </fieldset>
-  )
-}
-
-function BrandMark() {
-  return (
-    <svg viewBox="0 0 32 32" aria-hidden="true" className="size-9 shrink-0">
-      <rect width="32" height="32" rx="9" fill="#ffffff" />
-      <path d="M0 19h32v4a9 9 0 0 1-9 9H9a9 9 0 0 1-9-9z" fill="#dcc48e" />
-      <path d="M0 17.5c4 0 4-1.5 8-1.5s4 1.5 8 1.5 4-1.5 8-1.5 4 1.5 8 1.5V20H0z" fill="#14a39a" />
-      <circle cx="22" cy="9.5" r="3.5" fill="#2a7cc4" />
-    </svg>
   )
 }
 

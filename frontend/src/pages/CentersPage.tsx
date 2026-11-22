@@ -53,7 +53,7 @@ export function CentersPage({ centers, refresh }: { centers: Center[]; refresh: 
     try {
       await refresh()
     } catch {
-      setError('A operação foi concluída, mas a lista não pôde ser atualizada. Use Atualizar dados para tentar novamente.')
+      setError('A operação foi concluída, mas a lista não pôde ser atualizada. Clique em Atualizar dados para tentar de novo.')
     }
   }
 
@@ -78,7 +78,7 @@ export function CentersPage({ centers, refresh }: { centers: Center[]; refresh: 
   }
 
   async function remove(center: Center) {
-    if (!window.confirm(`Excluir o centro ${center.name}? Os meios de contato do centro serão removidos. A conta será excluída somente se não estiver vinculada a um usuário.`)) return
+    if (!window.confirm(`Excluir o centro ${center.name}? Os contatos do centro também serão removidos.`)) return
 
     setBusy(true)
     setError('')
@@ -108,7 +108,7 @@ export function CentersPage({ centers, refresh }: { centers: Center[]; refresh: 
         </div>
       )}
 
-      <Panel title="Centros cadastrados" detail={`${centers.length} registro(s)`}
+      <Panel title="Centros cadastrados" detail={`${centers.length} ${centers.length === 1 ? 'centro' : 'centros'} na rede`}
         action={<button type="button" disabled={busy || !!editor} onClick={() => openEditor('new')} className={primaryButtonClass}><PlusIcon /> Novo centro</button>}>
         {centers.length === 0 ? <EmptyState>Nenhum centro cadastrado.</EmptyState> : (<>
           <ul className="divide-y divide-line border-t border-line sm:hidden">
@@ -131,7 +131,7 @@ export function CentersPage({ centers, refresh }: { centers: Center[]; refresh: 
                 <tr>
                   <th className="px-5 py-3">ID</th>
                   <th className="px-5 py-3">Centro</th>
-                  <th className="px-5 py-3">E-mail da conta</th>
+                  <th className="px-5 py-3">E-mail</th>
                   <th className="px-5 py-3">Endereço</th>
                   <th className="px-5 py-3 text-right">Ações</th>
                 </tr>
@@ -197,7 +197,7 @@ function CenterForm({ center, busy, onSave, onCancel }: {
         <label className={labelClass}>Nome *
           <input name="name" className={inputClass} defaultValue={center?.name} maxLength={150} required />
         </label>
-        <label className={labelClass}>E-mail da conta *
+        <label className={labelClass}>E-mail *
           <input name="email" type="email" className={inputClass} defaultValue={center?.email} maxLength={255} required />
         </label>
         {!center && <label className={labelClass}>Senha * (8 a 128 caracteres)

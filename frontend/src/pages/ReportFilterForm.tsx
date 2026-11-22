@@ -14,14 +14,14 @@ const states = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT'
 const labels: Record<FilterName, string> = {
   species: 'Espécie',
   centerId: 'Centro',
-  available: 'Disponibilidade',
+  available: 'Situação',
   city: 'Cidade',
-  state: 'UF',
-  matchStatus: 'Situação do vínculo',
-  userId: 'Usuário',
+  state: 'Estado',
+  matchStatus: 'Mostrar',
+  userId: 'Pessoa',
   desiredSpecies: 'Espécie desejada',
   breedId: 'Raça',
-  supplyStatus: 'Situação da oferta',
+  supplyStatus: 'Procura',
 }
 
 interface ReportFilterFormProps {
@@ -50,7 +50,7 @@ export function ReportFilterForm({ fields, data, draft, applied, onEdit, onApply
       })
       .catch((cause: unknown) => {
         if (!controller.signal.aborted) {
-          setUserError(cause instanceof Error ? cause.message : 'Não foi possível carregar os usuários.')
+          setUserError(cause instanceof Error ? cause.message : 'Não foi possível carregar a lista de pessoas.')
         }
       })
     return () => controller.abort()
@@ -60,19 +60,19 @@ export function ReportFilterForm({ fields, data, draft, applied, onEdit, onApply
     species: speciesOptions,
     desiredSpecies: speciesOptions,
     available: [{ value: true, label: 'Disponível' }, { value: false, label: 'Indisponível' }],
-    centerId: data.centers.map((center) => ({ value: center.id, label: `${center.name} (#${center.id})` })),
+    centerId: data.centers.map((center) => ({ value: center.id, label: center.name })),
     state: states.map((value) => ({ value, label: value })),
-    userId: users.map((user) => ({ value: user.id, label: `${user.name} (#${user.id})` })),
-    breedId: data.breeds.map((breed) => ({ value: breed.id, label: `${breed.name} · ${speciesLabel(breed.species)} (#${breed.id})` })),
+    userId: users.map((user) => ({ value: user.id, label: user.name })),
+    breedId: data.breeds.map((breed) => ({ value: breed.id, label: `${breed.name} (${speciesLabel(breed.species)})` })),
     matchStatus: [
-      { value: 'Raca com animal', label: 'Raça com animal' },
-      { value: 'Raca sem animal', label: 'Raça sem animal' },
-      { value: 'Animal sem raca', label: 'Animal sem raça' },
+      { value: 'Raca com animal', label: 'Raças com animais' },
+      { value: 'Raca sem animal', label: 'Raças sem animais' },
+      { value: 'Animal sem raca', label: 'Animais sem raça definida' },
     ],
     supplyStatus: [
-      { value: 'Deficit de oferta', label: 'Déficit de oferta' },
-      { value: 'Superavit de oferta', label: 'Superávit de oferta' },
-      { value: 'Oferta equilibrada', label: 'Oferta equilibrada' },
+      { value: 'Deficit de oferta', label: 'Mais procura que animais' },
+      { value: 'Superavit de oferta', label: 'Mais animais que procura' },
+      { value: 'Oferta equilibrada', label: 'Equilibrado' },
     ],
   }
 
@@ -87,7 +87,7 @@ export function ReportFilterForm({ fields, data, draft, applied, onEdit, onApply
   })
 
   return (
-    <div className="border-y border-sand-line bg-sand-wash px-5 py-4">
+    <div className="border-y border-toolbar-line bg-toolbar px-5 py-4">
       <form className="flex flex-wrap items-end gap-3" onSubmit={(event) => {
         event.preventDefault()
         const city = draft.city?.replace(/\s+/g, ' ').trim()
@@ -127,11 +127,11 @@ export function ReportFilterForm({ fields, data, draft, applied, onEdit, onApply
           <button type="button" className={secondaryButtonClass} onClick={() => {
             setUserError('')
             setUserAttempt((attempt) => attempt + 1)
-          }}>Recarregar usuários</button>
+          }}>Tentar novamente</button>
         </div>
       )}
       <p className="mt-3 text-xs text-muted" aria-live="polite">
-        {appliedLabels.length ? `Filtros aplicados: ${appliedLabels.join(' | ')}` : 'Sem filtros aplicados.'}
+        {appliedLabels.length ? `Filtros: ${appliedLabels.join(' · ')}` : 'Mostrando tudo, sem filtros.'}
       </p>
     </div>
   )

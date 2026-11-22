@@ -77,7 +77,7 @@ export function ReportsPage({ data }: { data: DashboardData }) {
               type="button"
               onClick={() => setActiveReport(report.id)}
               aria-current={activeReport === report.id ? 'page' : undefined}
-              className={`min-h-24 rounded-[12px] border p-4 text-left transition-colors ${activeReport === report.id ? 'border-action bg-action text-on-action' : 'border-line bg-paper text-ink hover:bg-sky-soft'}`}
+              className={`min-h-24 rounded-[0.75rem] border p-4 text-left transition-colors ${activeReport === report.id ? 'border-action bg-action text-on-action' : 'border-line bg-paper text-ink hover:bg-sky-soft'}`}
             >
               <span className={`font-mono text-xs ${activeReport === report.id ? 'text-on-action-muted' : 'text-link'}`}>0{report.id}</span>
               <span className="mt-1 block text-sm font-semibold">{report.title}</span>
@@ -126,7 +126,7 @@ export function ReportsPage({ data }: { data: DashboardData }) {
 
       {activeReport === 4 && (
         <Panel title="04 · Recomendações" detail="Animais disponíveis que atendem às preferências do usuário informado">
-          <form onSubmit={(event) => void searchRecommendations(event)} className="flex flex-wrap items-end gap-3 border-y border-sand-line bg-sand-wash px-5 py-4">
+          <form onSubmit={(event) => void searchRecommendations(event)} className="flex flex-wrap items-end gap-3 border-y border-toolbar-line bg-toolbar px-5 py-4">
             <label className={`${labelClass} w-48`}>ID do usuário
               <input className={`${fieldClass} mt-1.5`} type="number" min="1" step="1" required value={userId} onChange={(event) => setUserId(event.target.value)} />
             </label>

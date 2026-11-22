@@ -63,7 +63,7 @@ function Photo({ url, name, sizeClass, showStatus }: {
         key={source}
         src={source}
         alt={`Foto de ${name}`}
-        className={`${sizeClass} shrink-0 rounded-md bg-sand-wash object-contain`}
+        className={`${sizeClass} shrink-0 rounded-lg bg-track object-cover ring-1 ring-line`}
         loading="lazy"
         referrerPolicy="no-referrer"
         onError={() => setSourceIndex(sourceIndex + 1)}
@@ -72,7 +72,7 @@ function Photo({ url, name, sizeClass, showStatus }: {
   }
 
   return showStatus && (
-    <div className={`${sizeClass} flex shrink-0 items-center justify-center rounded-md bg-sand-wash px-1 text-center text-[10px] text-muted`}>
+    <div className={`${sizeClass} flex shrink-0 items-center justify-center rounded-md bg-track px-1 text-center text-[0.625rem] text-muted`}>
       {url ? 'Foto indisponível' : 'Sem foto cadastrada'}
     </div>
   )

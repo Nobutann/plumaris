@@ -50,12 +50,12 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     })
   } catch (cause) {
     if (options?.signal?.aborted) throw cause
-    throw new Error('Não foi possível conectar à API. Verifique se o backend está em execução.', { cause })
+    throw new Error('Não foi possível conectar ao sistema. Verifique a conexão e tente novamente.', { cause })
   }
 
   if (!response.ok) {
     const problem = await response.json().catch(() => null) as ApiProblem | null
-    throw new Error(problem?.detail || problem?.title || `A API retornou o erro ${response.status}.`)
+    throw new Error(problem?.detail || problem?.title || `Algo deu errado (erro ${response.status}). Tente novamente em instantes.`)
   }
 
   if (response.status === 204) {

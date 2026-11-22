@@ -69,7 +69,7 @@ export function PreferencesPage({ refreshRef, onRefreshLockChange, onConnectionC
       const preferences = await api.listPreferences()
       setData((current) => current && { ...current, preferences })
     } catch {
-      setError('Não foi possível atualizar a lista. Use “Atualizar dados” para tentar novamente.')
+      setError('Não foi possível atualizar a lista. Clique em “Atualizar dados” para tentar de novo.')
     }
   }
 
@@ -150,7 +150,7 @@ export function PreferencesPage({ refreshRef, onRefreshLockChange, onConnectionC
       {error && <ErrorMessage message={error} />}
       {editor && (
         <div ref={editorRef} tabIndex={-1} className="outline-none">
-          <Panel title={editor === 'new' ? 'Cadastrar preferência' : `Editar preferência de ${editor.userName}`} detail="Os critérios de adoção são opcionais.">
+          <Panel title={editor === 'new' ? 'Cadastrar preferência' : `Editar preferência de ${editor.userName}`} detail="Deixe em branco o que não fizer diferença para a pessoa.">
             <PreferenceForm
               key={editor === 'new' ? 'new' : editor.id}
               preference={editor === 'new' ? null : editor}
@@ -165,11 +165,11 @@ export function PreferencesPage({ refreshRef, onRefreshLockChange, onConnectionC
       )}
       <Panel
         title="Preferências cadastradas"
-        detail={`${data.preferences.length} registros`}
+        detail={`${data.preferences.length} ${data.preferences.length === 1 ? 'pessoa' : 'pessoas'} com preferências`}
         action={<button type="button" disabled={busy || data.users.length === 0} onClick={() => openEditor('new')} className={primaryButtonClass}><PlusIcon /> Nova preferência</button>}
       >
         {data.preferences.length === 0 ? (
-          <EmptyState>{data.users.length ? 'Nenhuma preferência cadastrada.' : 'Nenhum usuário disponível para cadastrar preferências.'}</EmptyState>
+          <EmptyState>{data.users.length ? 'Nenhuma preferência cadastrada.' : 'Todas as pessoas cadastradas já têm preferências.'}</EmptyState>
         ) : (<>
           <ul className="divide-y divide-line border-t border-line sm:hidden">
             {data.preferences.map((preference) => (
@@ -198,7 +198,7 @@ export function PreferencesPage({ refreshRef, onRefreshLockChange, onConnectionC
             <table className={tableClass}>
               <thead className={tableHeadClass}>
                 <tr>
-                  {['Usuário', 'Espécie', 'Porte', 'Idade (anos)', 'Sexo', 'Cor', 'Raça'].map((label) => (
+                  {['Pessoa', 'Espécie', 'Porte', 'Idade (anos)', 'Sexo', 'Cor', 'Raça'].map((label) => (
                     <th key={label} scope="col" className="px-5 py-3">{label}</th>
                   ))}
                   <th scope="col" className="px-5 py-3 text-right">Ações</th>
@@ -266,10 +266,10 @@ function PreferenceForm({ preference, users, breeds, busy, onSave, onCancel }: {
 
   return (
     <form onSubmit={submit} className="space-y-5 px-5 pt-2 pb-5">
-      <fieldset disabled={busy} className="grid gap-4 md:grid-cols-2 [&>label]:text-[13px] [&>label]:font-semibold [&>label]:text-ink">
-        <label>Usuário *
+      <fieldset disabled={busy} className="grid gap-4 md:grid-cols-2 [&>label]:text-[0.8125rem] [&>label]:font-semibold [&>label]:text-ink">
+        <label>Pessoa *
           <select name="userId" className={inputClass} defaultValue={preference?.userId ?? ''} required>
-            <option value="" disabled>Selecione um usuário</option>
+            <option value="" disabled>Selecione uma pessoa</option>
             {users.map((user) => <option key={user.id} value={user.id}>{user.name} (#{user.id})</option>)}
           </select>
         </label>

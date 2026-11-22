@@ -108,7 +108,7 @@ export function AnimalsPage({ animals, breeds, centers, refresh }: AnimalsPagePr
   }
 
   async function remove(animal: Animal) {
-    if (!window.confirm(`Excluir ${animal.name}? Esta ação também remove as fotos e os registros de interesse associados.`)) return
+    if (!window.confirm(`Excluir ${animal.name}? A foto e os interesses registrados para este animal também serão removidos.`)) return
 
     setBusy(true)
     setError('')
@@ -144,12 +144,12 @@ export function AnimalsPage({ animals, breeds, centers, refresh }: AnimalsPagePr
       )}
       <Panel
         title="Animais cadastrados"
-        detail={`${filteredAnimals.length} de ${animals.length} registros`}
+        detail={`${filteredAnimals.length} de ${animals.length} animais`}
         action={<button type="button" disabled={busy} onClick={() => openEditor('new')} className={primaryButtonClass}><PlusIcon /> Novo animal</button>}
       >
-        <div className="grid gap-3 border-y border-sand-line bg-sand-wash px-5 py-4 md:grid-cols-[1fr_200px_200px]">
+        <div className="grid gap-3 border-y border-toolbar-line bg-toolbar px-5 py-4 md:grid-cols-[1fr_200px_200px]">
           <label className="sr-only" htmlFor="animal-search">Buscar animais</label>
-          <input id="animal-search" className={fieldClass} placeholder="Buscar por nome, raça, centro ou ID" value={search} onChange={(event) => setSearch(event.target.value)} />
+          <input id="animal-search" className={fieldClass} placeholder="Buscar por nome, raça ou centro" value={search} onChange={(event) => setSearch(event.target.value)} />
           <label className="sr-only" htmlFor="animal-species">Filtrar por espécie</label>
           <select id="animal-species" className={fieldClass} value={speciesFilter} onChange={(event) => setSpeciesFilter(event.target.value)}>
             <option value="all">Todas as espécies</option>
@@ -320,17 +320,17 @@ function AnimalForm({ animal, breeds, centers, busy, onCancel, onSave }: {
           </select>
         </label>
       </div>
-      <label className={labelClass}>{animal?.photoUrl ? 'Nova URL da foto (opcional)' : 'URL da foto (opcional)'}
+      <label className={labelClass}>{animal?.photoUrl ? 'Novo link da foto (opcional)' : 'Link da foto (opcional)'}
         <input
           className={`${fieldClass} mt-1.5`}
           type="url"
           maxLength={500}
-          placeholder="https://exemplo.com/foto.jpg"
+          placeholder="https://…"
           disabled={Boolean(photoFile) || busy}
           value={photoUrl}
           onChange={(event) => setPhotoUrl(event.target.value)}
         />
-        <span className="mt-1 block text-xs font-normal text-muted">Cole o endereço da imagem ou o link do resultado no Google Imagens.</span>
+        <span className="mt-1 block text-xs font-normal text-muted">Cole o link de uma imagem da internet ou envie um arquivo abaixo.</span>
       </label>
       <label className={labelClass}>Foto do computador (opcional)
         <input

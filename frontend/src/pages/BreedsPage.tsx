@@ -97,10 +97,10 @@ export function BreedsPage({ breeds, refresh }: BreedsPageProps) {
       )}
       <Panel
         title="Raças cadastradas"
-        detail={`${filteredBreeds.length} de ${breeds.length} registros`}
+        detail={`${filteredBreeds.length} de ${breeds.length} raças`}
         action={<button type="button" onClick={() => openEditor('new')} className={primaryButtonClass}><PlusIcon /> Nova raça</button>}
       >
-        <div className="grid gap-3 border-y border-sand-line bg-sand-wash px-5 py-4 md:grid-cols-[1fr_170px]">
+        <div className="grid gap-3 border-y border-toolbar-line bg-toolbar px-5 py-4 md:grid-cols-[1fr_170px]">
           <label className="sr-only" htmlFor="breed-search">Buscar raças</label>
           <input id="breed-search" className={fieldClass} placeholder="Buscar por nome" value={search} onChange={(event) => setSearch(event.target.value)} />
           <label className="sr-only" htmlFor="breed-species">Filtrar por espécie</label>

@@ -37,114 +37,145 @@
   --font-sans: "Atkinson Hyperlegible Next", system-ui, sans-serif;
   --font-mono: "Atkinson Hyperlegible Mono", ui-monospace, monospace;
 
-  --color-ground: #f5f8fb;
-  --color-paper: #ffffff;
-  --color-ink: #0e2a47;
-  --color-muted: #4c6176;
-  --color-subtle: #5d7185;
-  --color-line: #dbe4ed;
-  --color-line-strong: #b9c8d6;
-  --color-track: #edf2f7;
+  /* Floresta de dia: off-white suave, tinta verde-carvão, musgo como cor da marca e ameixa como contraponto. */
+  --color-ground: #f8f7f3;
+  --color-paper: #fdfcfa;
+  --color-ink: #213435;
+  --color-muted: #55625d;
+  --color-subtle: #67736e;
+  --color-line: #e9e6de;
+  --color-line-strong: #d6d1c6;
+  --color-track: #f0eee8;
 
-  --color-sky: #1a66aa;
-  --color-sky-strong: #13528c;
-  --color-sky-soft: #e9f2fb;
-  --color-sky-mist: #d4e6f7;
-  --color-sea: #2a7cc4;
+  --color-brand: #46685b;
+  --color-brand-pad: #e1e3ac;
+  --color-brand-shade: #c9d39c;
 
-  --color-teal: #14a39a;
-  --color-teal-ink: #0a7770;
-  --color-teal-soft: #e3f4f1;
-  --color-teal-line: #a9dcd5;
+  --color-sky: #46685b;
+  --color-sky-strong: #2f4a40;
+  --color-sky-soft: #eef2eb;
+  --color-sky-mist: #d5e0cf;
+  --color-sea: #648a64;
 
-  --color-sand: #dcc48e;
-  --color-sand-wash: #fbf6ea;
-  --color-sand-line: #ece0c2;
-  --color-sand-ink: #75592a;
+  --color-teal: #5a8c55;
+  --color-teal-ink: #3b6638;
+  --color-teal-soft: #ebf2e5;
+  --color-teal-line: #bdd3b3;
 
-  --color-danger: #b02a37;
-  --color-danger-ink: #8c1d29;
-  --color-danger-soft: #fdeef0;
-  --color-danger-line: #f1c4ca;
+  /* "sand" é o tom de indisponível: ameixa. */
+  --color-sand: #7b4a6b;
+  --color-sand-wash: #f5edf2;
+  --color-sand-line: #e2ccda;
+  --color-sand-ink: #6a3a5a;
 
-  /* Papéis semânticos: a barra lateral, as ações preenchidas e os links trocam de valor no tema escuro. */
-  --color-rail: #1a66aa;
-  --color-rail-muted: #d4e6f7;
-  --color-rail-active: #ffffff;
-  --color-rail-active-ink: #0e2a47;
-  --color-rail-active-number: #1a66aa;
-  --color-rail-active-edge: transparent;
-  --color-action: #1a66aa;
-  --color-action-strong: #13528c;
+  --color-danger: #b3362f;
+  --color-danger-ink: #8d2620;
+  --color-danger-soft: #fbeeec;
+  --color-danger-line: #efc6c1;
+
+  /* A barra lateral é verde-floresta nos dois temas. */
+  --color-rail: #213435;
+  --color-rail-ink: #eef0e6;
+  --color-rail-muted: #a7b6ad;
+  --color-rail-hover: #2b4243;
+  --color-rail-line: #2f4647;
+  --color-rail-active: #3a5a50;
+  --color-rail-active-ink: #e1e3ac;
+  --color-rail-accent: #a6b985;
+  --color-action: #46685b;
+  --color-action-strong: #37544a;
   --color-on-action: #ffffff;
-  --color-on-action-muted: #d4e6f7;
-  --color-link: #1a66aa;
-  --color-link-strong: #13528c;
-  --color-field-line: var(--color-line-strong);
+  --color-on-action-muted: #d5e0cf;
+  --color-link: #46685b;
+  --color-link-strong: #2f4a40;
+  --color-field-line: #d3cec3;
+  --color-toolbar: #faf9f6;
+  --color-toolbar-line: #e9e6de;
 
   /* Séries dos gráficos: o significado é o mesmo nos dois temas. */
-  --color-series-available: var(--color-sea);
-  --color-series-unavailable: var(--color-sand);
-  --color-series-preference: var(--color-teal);
-  --color-series-unknown: var(--color-line-strong);
+  --color-series-available: #648a64;
+  --color-series-unavailable: #8c5a7c;
+  --color-series-preference: #b08463;
+  --color-series-unknown: #d6d1c6;
 
-  --shadow-rest: 0 1px 2px rgb(14 42 71 / 0.12);
-  --shadow-raised: 0 1px 3px rgb(14 42 71 / 0.18);
-  --shadow-selected: 0 2px 6px rgb(26 102 170 / 0.25);
+  --shadow-rest: 0 1px 2px rgb(33 52 53 / 0.08);
+  --shadow-raised: 0 1px 2px rgb(33 52 53 / 0.06), 0 4px 12px rgb(33 52 53 / 0.06);
+  --shadow-selected: 0 2px 8px rgb(70 104 91 / 0.3);
+  --shadow-card: 0 1px 2px rgb(33 52 53 / 0.05), 0 1px 1px rgb(33 52 53 / 0.03);
 }
 
-/* Orla à noite: o mar escuro substitui o branco, a areia e o turquesa ganham luz para manter contraste. */
+/* Floresta à noite: verde-carvão profundo, sálvia como destaque e ameixa clara para manter o contraste. */
 :root[data-theme="dark"] {
   color-scheme: dark;
 
-  --color-ground: #0c1a29;
-  --color-paper: #122436;
-  --color-ink: #e4edf6;
-  --color-muted: #a6b8ca;
-  --color-subtle: #8fa3b7;
-  --color-line: #233a52;
-  --color-line-strong: #3a546f;
-  --color-track: #1a2f45;
+  --color-ground: #161f1f;
+  --color-paper: #1d2929;
+  --color-ink: #eceee4;
+  --color-muted: #aab5ad;
+  --color-subtle: #909d95;
+  --color-line: #2a3a39;
+  --color-line-strong: #3e5251;
+  --color-track: #243232;
 
-  --color-sky: #5ea6e6;
-  --color-sky-strong: #a3cff5;
-  --color-sky-soft: #173352;
-  --color-sky-mist: #21476d;
-  --color-sea: #4b98dd;
+  --color-brand: #46685b;
+  --color-brand-pad: #e1e3ac;
+  --color-brand-shade: #c9d39c;
 
-  --color-teal: #2bbfb3;
-  --color-teal-ink: #74dbd1;
-  --color-teal-soft: #0f3431;
-  --color-teal-line: #22706a;
+  --color-sky: #a6b985;
+  --color-sky-strong: #d4ddbb;
+  --color-sky-soft: #26352b;
+  --color-sky-mist: #34492f;
+  --color-sea: #8fb07f;
 
-  --color-sand: #d6be88;
-  --color-sand-wash: #2a2419;
-  --color-sand-line: #6b5a3a;
-  --color-sand-ink: #e4cd9a;
+  --color-teal: #8fc285;
+  --color-teal-ink: #c4e3bb;
+  --color-teal-soft: #1f3020;
+  --color-teal-line: #3e5e3a;
 
-  --color-danger: #f27a86;
-  --color-danger-ink: #ffb8bf;
-  --color-danger-soft: #3a1820;
-  --color-danger-line: #6f2c37;
+  --color-sand: #c48fb2;
+  --color-sand-wash: #33222e;
+  --color-sand-line: #5e3d55;
+  --color-sand-ink: #e8c6dd;
 
-  --color-rail: #11365a;
-  --color-rail-muted: #a9c8e6;
-  --color-rail-active: #2a5f92;
-  --color-rail-active-ink: #ffffff;
-  --color-rail-active-number: #c4e1fb;
-  --color-rail-active-edge: #a9c8e6;
-  --color-action: #2a6fb2;
-  --color-action-strong: #1f5f9c;
-  --color-on-action: #ffffff;
-  --color-on-action-muted: #d4e6f7;
-  --color-link: #7ab8f0;
-  --color-link-strong: #a8d1f7;
-  --color-field-line: #56708c;
-  --color-series-unknown: #56708c;
+  --color-danger: #f08a80;
+  --color-danger-ink: #ffc0b8;
+  --color-danger-soft: #3a1c1a;
+  --color-danger-line: #6e3530;
 
-  --shadow-rest: 0 1px 2px rgb(0 0 0 / 0.35);
-  --shadow-raised: 0 1px 3px rgb(0 0 0 / 0.4);
-  --shadow-selected: 0 2px 6px rgb(0 0 0 / 0.45);
+  --color-rail: #121a1a;
+  --color-rail-ink: #eceee4;
+  --color-rail-muted: #909d95;
+  --color-rail-hover: #1d2929;
+  --color-rail-line: #243232;
+  --color-rail-active: #2c3d33;
+  --color-rail-active-ink: #e1e3ac;
+  --color-rail-accent: #a6b985;
+  --color-action: #a6b985;
+  --color-action-strong: #b9c99c;
+  --color-on-action: #1a2626;
+  --color-on-action-muted: #34482f;
+  --color-link: #b9cc98;
+  --color-link-strong: #dde6c4;
+  --color-field-line: #46595a;
+  --color-toolbar: #192424;
+  --color-toolbar-line: #2a3a39;
+
+  --color-series-available: #8fb07f;
+  --color-series-unavailable: #c48fb2;
+  --color-series-preference: #d4a47f;
+  --color-series-unknown: #4a5d5b;
+
+  --shadow-rest: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.35), 0 4px 14px rgb(0 0 0 / 0.3);
+  --shadow-selected: 0 2px 10px rgb(0 0 0 / 0.45);
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.3);
+}
+
+/* Em telas de computador a interface fica 10% maior (equivale ao zoom de 110%). Tudo usa rem, então escala junto. */
+@media (min-width: 1024px) {
+  html {
+    font-size: 110%;
+  }
 }
 
 :root {
@@ -152,7 +183,7 @@
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  accent-color: var(--color-sky);
+  accent-color: var(--color-brand);
   caret-color: var(--color-sky);
   scrollbar-color: var(--color-line-strong) transparent;
 }
@@ -174,8 +205,13 @@ body {
 }
 
 :where(a, button, summary, select, input, textarea, [tabindex]):focus-visible {
-  outline: 2px solid var(--color-teal-ink);
+  outline: 2px solid var(--color-sky);
   outline-offset: 2px;
+}
+
+/* Na barra lateral escura, o foco usa a sálvia para continuar visível. */
+aside :where(a, button, [tabindex]):focus-visible {
+  outline-color: var(--color-rail-accent);
 }
 
 .theme-switching *,

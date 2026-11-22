@@ -15,31 +15,31 @@ const teal = 'bg-series-preference'
 export function DashboardCharts({ series }: { series: Series }) {
   return (
     <div className="grid items-start gap-5 lg:grid-cols-2">
-      <Panel title="Animais por espécie" detail="Quantidade de animais por disponibilidade no recorte." className="min-w-0">
+      <Panel title="Animais por espécie" detail="Disponíveis e indisponíveis, conforme os filtros." className="min-w-0">
         <CountColumns rows={series.animalsBySpecies.map((row) => ({
           label: speciesLabel(row.species), total: row.total, available: row.available, unavailable: row.unavailable,
         }))} />
       </Panel>
-      <Panel title="Faixas etárias" detail="Quantidade de animais. Nascimento ausente ou futuro conta como idade desconhecida." className="min-w-0">
+      <Panel title="Faixas etárias" detail="Animais sem data de nascimento aparecem como idade não informada." className="min-w-0">
         <CountColumns rows={series.ageGroups.map((row) => ({ label: ageGroupLabel(row.ageGroup), total: row.total, unknown: row.ageGroup === 'Unknown' }))} />
         {series.ageGroups.length > 0 && series.ageGroups.every((row) => row.total === 0) && (
-          <p className="px-5 pb-5 text-center text-xs text-muted">Nenhum animal no recorte.</p>
+          <p className="px-5 pb-5 text-center text-xs text-muted">Nenhum animal encontrado com esses filtros.</p>
         )}
       </Panel>
-      <Panel title="Animais por centro" detail="Quantidade de animais por disponibilidade no recorte." className="min-w-0">
+      <Panel title="Animais por centro" detail="Disponíveis e indisponíveis, conforme os filtros." className="min-w-0">
         <AnimalsByCenter rows={series.animalsByCenter} />
       </Panel>
       <Panel
-        title="Oferta e demanda por raça"
-        detail="A espécie limita as raças exibidas. As preferências são globais, independentemente de centro, disponibilidade ou período."
+        title="Disponíveis × procura por raça"
+        detail="Animais disponíveis de cada raça comparados com quantas pessoas procuram por ela."
         className="min-w-0"
       >
         <SupplyDemand rows={series.supplyDemandByBreed} />
       </Panel>
-      <Panel title="Interesses por mês" detail="Quantidade de interesses dos animais no recorte e período selecionados." className="min-w-0">
+      <Panel title="Interesses por mês" detail="Quantos interesses em adoção foram registrados a cada mês." className="min-w-0">
         <MonthlyInterests rows={series.interestsByMonth} />
       </Panel>
-      <Panel title="Boxplot de idades por espécie" detail="Idade em anos. Os bigodes marcam o mínimo e o máximo. A linha mais alta marca a mediana." className="min-w-0">
+      <Panel title="Idades por espécie" detail="Da menor à maior idade, em anos, com a idade mediana em destaque." className="min-w-0">
         <AgeBoxplots rows={series.ageBoxplotBySpecies} />
       </Panel>
     </div>
@@ -47,7 +47,7 @@ export function DashboardCharts({ series }: { series: Series }) {
 }
 
 function LegendItem({ color, label }: { color: string; label: string }) {
-  return <span className="inline-flex items-center gap-2"><span aria-hidden="true" className={`size-2.5 shrink-0 rounded-[3px] ${color}`} />{label}</span>
+  return <span className="inline-flex items-center gap-2"><span aria-hidden="true" className={`size-2.5 shrink-0 rounded-[0.1875rem] ${color}`} />{label}</span>
 }
 
 function AvailabilityLegend() {
@@ -62,7 +62,7 @@ function AvailabilityLegend() {
 type Column = { label: string; total: number; available?: number; unavailable?: number; unknown?: boolean }
 
 function CountColumns({ rows }: { rows: Column[] }) {
-  if (!rows.length) return <EmptyState>Nenhum animal no recorte.</EmptyState>
+  if (!rows.length) return <EmptyState>Nenhum animal encontrado com esses filtros.</EmptyState>
   const max = rows.reduce((highest, row) => Math.max(highest, row.total), 0)
 
   return (
@@ -72,8 +72,8 @@ function CountColumns({ rows }: { rows: Column[] }) {
         {rows.map(({ label, total, available, unavailable, unknown }) => (
           <div key={label} className="min-w-0">
             <div aria-hidden="true" className="flex h-36 flex-col items-center justify-end border-b border-line-strong">
-              {unavailable !== undefined && <div className={`w-1/2 max-w-24 rounded-t-[6px] ${sand}`} style={{ height: scaledPercent(unavailable, max) }} />}
-              <div className={`w-1/2 max-w-24 ${unknown ? 'bg-series-unknown' : sea} ${unavailable === undefined || unavailable === 0 ? 'rounded-t-[6px]' : ''}`} style={{ height: scaledPercent(available ?? total, max) }} />
+              {unavailable !== undefined && <div className={`w-1/2 max-w-24 rounded-t-[0.375rem] ${sand}`} style={{ height: scaledPercent(unavailable, max) }} />}
+              <div className={`w-1/2 max-w-24 ${unknown ? 'bg-series-unknown' : sea} ${unavailable === undefined || unavailable === 0 ? 'rounded-t-[0.375rem]' : ''}`} style={{ height: scaledPercent(available ?? total, max) }} />
             </div>
             <p className="mt-2 wrap-break-word text-sm font-semibold text-ink">{label}</p>
             <p className="font-mono text-base text-ink">{counts.format(total)}</p>
@@ -115,7 +115,7 @@ function BarList({ label, count, max, children }: { label: string; count: number
 }
 
 function AnimalsByCenter({ rows }: { rows: Series['animalsByCenter'] }) {
-  if (!rows.length) return <EmptyState>Nenhum centro com animais no recorte.</EmptyState>
+  if (!rows.length) return <EmptyState>Nenhum centro com animais para esses filtros.</EmptyState>
   const max = rows.reduce((highest, row) => Math.max(highest, row.total), 0)
 
   return (
@@ -149,8 +149,8 @@ function SupplyDemand({ rows }: { rows: Series['supplyDemandByBreed'] }) {
   return (
     <div className="space-y-3 px-5 pt-1 pb-5">
       <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
-        <LegendItem color={sea} label="Oferta disponível no recorte" />
-        <LegendItem color={teal} label="Preferências globais explícitas pela raça" />
+        <LegendItem color={sea} label="Animais disponíveis" />
+        <LegendItem color={teal} label="Pessoas que procuram a raça" />
       </div>
       <BarList label={rows.length === 1 ? 'Raça' : 'Raças'} count={rows.length} max={max}>
         <ul className="space-y-3">
@@ -158,8 +158,8 @@ function SupplyDemand({ rows }: { rows: Series['supplyDemandByBreed'] }) {
             <li key={row.breedId} className="border-b border-line pb-2 last:border-0">
               <p className="mb-1 wrap-break-word text-sm font-medium text-ink">{row.breedName} · {speciesLabel(row.species)}</p>
               <div className="space-y-1 text-xs text-muted">
-                <BreedBar label="Oferta" color={sea} value={row.availableSupply} max={max} />
-                <BreedBar label="Preferências" color={teal} value={row.globalExplicitBreedPreferences} max={max} />
+                <BreedBar label="Disponíveis" color={sea} value={row.availableSupply} max={max} />
+                <BreedBar label="Procura" color={teal} value={row.globalExplicitBreedPreferences} max={max} />
               </div>
             </li>
           ))}
@@ -188,7 +188,7 @@ function monthLabel(month: string) {
 }
 
 function MonthlyInterests({ rows }: { rows: Series['interestsByMonth'] }) {
-  if (!rows.length) return <EmptyState>Nenhum interesse no recorte e período selecionados.</EmptyState>
+  if (!rows.length) return <EmptyState>Nenhum interesse registrado no período.</EmptyState>
 
   const months = [...rows].sort((first, second) => first.month.localeCompare(second.month))
   const first = months[0].month
@@ -252,7 +252,7 @@ function MonthlyInterests({ rows }: { rows: Series['interestsByMonth'] }) {
 }
 
 function AgeBoxplots({ rows }: { rows: SpeciesAgeBoxplot[] }) {
-  if (!rows.length) return <EmptyState>Nenhuma idade válida no recorte.</EmptyState>
+  if (!rows.length) return <EmptyState>Nenhum animal com data de nascimento para esses filtros.</EmptyState>
   const max = rows.reduce((highest, row) => Math.max(highest, row.maximum ?? 0), 0)
 
   return (
@@ -270,7 +270,7 @@ function AgeBoxplots({ rows }: { rows: SpeciesAgeBoxplot[] }) {
 function AgeBoxplot({ row, max }: { row: SpeciesAgeBoxplot; max: number }) {
   const { minimum, firstQuartile, median, thirdQuartile, maximum } = row
   if (minimum === null || firstQuartile === null || median === null || thirdQuartile === null || maximum === null) {
-    return <p className="mt-1 text-xs text-muted">Sem dados de idade válida.</p>
+    return <p className="mt-1 text-xs text-muted">Sem datas de nascimento.</p>
   }
 
   return (
@@ -278,11 +278,11 @@ function AgeBoxplot({ row, max }: { row: SpeciesAgeBoxplot; max: number }) {
       <div aria-hidden="true" className="relative mx-1 mt-2 h-10 rounded-md bg-track">
         <div className="absolute top-1/2 border-t-2 border-muted"
           style={{ left: scaledPercent(minimum, max), width: scaledPercent(maximum - minimum, max) }} />
-        <div className="absolute inset-y-1.5 rounded-[4px] border-2 border-series-available bg-sky-mist"
+        <div className="absolute inset-y-1.5 rounded-[0.25rem] border-2 border-series-available bg-sky-mist"
           style={{ left: scaledPercent(firstQuartile, max), width: scaledPercent(thirdQuartile - firstQuartile, max) }} />
         {[minimum, maximum].map((age, index) => <span key={index} className="absolute inset-y-3 border-l-2 border-muted"
           style={{ left: scaledPercent(age, max) }} />)}
-        <span className="absolute inset-y-0.5 border-l-[3px] border-teal-ink" style={{ left: scaledPercent(median, max) }} />
+        <span className="absolute inset-y-0.5 border-l-[0.1875rem] border-teal-ink" style={{ left: scaledPercent(median, max) }} />
       </div>
       <div className="mx-1"><CountAxis max={max} /></div>
       <dl className="mt-2 grid grid-cols-3 gap-2 text-xs sm:grid-cols-5">
