@@ -37,7 +37,7 @@ class AnimalPhotoControllerTest {
     @Test
     void createsAnimalWithPhoto() throws Exception {
         String photoUrl = "https://example.org/mel.jpg";
-        when(animals.create(any(), eq(photoUrl))).thenReturn(42);
+        when(animals.create(any(), eq(photoUrl), isNull())).thenReturn(42);
         when(animals.findById(42)).thenReturn(Optional.of(animal(photoUrl)));
 
         mvc.perform(post("/api/animais").contentType(MediaType.APPLICATION_JSON)
@@ -45,12 +45,12 @@ class AnimalPhotoControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(42))
                 .andExpect(jsonPath("$.photoUrl").value(photoUrl));
-        verify(animals).create(any(), eq(photoUrl));
+        verify(animals).create(any(), eq(photoUrl), isNull());
     }
 
     @Test
     void createsAnimalWhenPhotoIsOmitted() throws Exception {
-        when(animals.create(any(), isNull())).thenReturn(42);
+        when(animals.create(any(), isNull(), isNull())).thenReturn(42);
         when(animals.findById(42)).thenReturn(Optional.of(animal(null)));
 
         mvc.perform(post("/api/animais").contentType(MediaType.APPLICATION_JSON)
@@ -64,7 +64,7 @@ class AnimalPhotoControllerTest {
         mvc.perform(post("/api/animais").contentType(MediaType.APPLICATION_JSON)
                         .content(ANIMAL_JSON.formatted(",\"photoUrl\":\"file:///tmp/mel.jpg\"")))
                 .andExpect(status().isBadRequest());
-        verify(animals, never()).create(any(), any());
+        verify(animals, never()).create(any(), any(), any());
     }
 
     private static AnimalResponse animal(String photoUrl) {

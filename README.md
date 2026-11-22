@@ -71,6 +71,12 @@ Para abrir o cliente do container, execute o comando abaixo e informe a senha de
 docker compose exec mysql mysql -u plumaris -p adocao_bd
 ```
 
+Para um banco já inicializado antes do suporte a arquivos de foto, aplique a migração uma vez antes de atualizar o backend. Bancos novos já recebem a estrutura pelos scripts de criação.
+
+```bash
+docker compose exec -T mysql sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysql -uroot' < database/10_fotos_enviadas.sql
+```
+
 ## Usar a interface
 
 - **Animais** permite listar, cadastrar, editar e excluir animais. Cada animal pertence a um centro. Se informar uma raça, escolha uma da mesma espécie.

@@ -19,6 +19,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import br.org.plumaris.adocao.animal.AnimalAgeGroupSummary;
 import br.org.plumaris.adocao.animal.AnimalRepository;
+import br.org.plumaris.adocao.animal.AnimalPhoto;
 import br.org.plumaris.adocao.animal.AnimalRequest;
 import br.org.plumaris.adocao.animal.AnimalResponse;
 import br.org.plumaris.adocao.animal.AnimalSpeciesSummary;
@@ -69,25 +70,36 @@ class ReportFiltersMySqlTest {
     void savesAndReplacesAnimalPhotoAndRollsBackWhenPhotoCannotBeSaved() {
         String photoUrl = "https://example.org/mel.jpg";
         AnimalRequest request = new AnimalRequest("Mel com foto", "Gato", null, null, null,
-                null, null, true, 10, null, photoUrl);
+                null, null, true, 10, null, photoUrl, null);
 
-        int id = animals.create(request, photoUrl);
+        int id = animals.create(request, photoUrl, null);
         try {
             assertThat(animals.findById(id)).get().extracting(AnimalResponse::photoUrl).isEqualTo(photoUrl);
             assertThat(animals.findAll("Gato", 10, true))
                     .extracting(AnimalResponse::id, AnimalResponse::photoUrl)
                     .contains(tuple(id, photoUrl));
 
-            assertThatThrownBy(() -> animals.create(request, "file:///tmp/mel.jpg"))
+            assertThatThrownBy(() -> animals.create(request, "file:///tmp/mel.jpg", null))
                     .isInstanceOf(DatabaseException.class);
             assertThat(animals.findAll("Gato", 10, true))
                     .extracting(AnimalResponse::id)
                     .containsExactly(id);
 
             String replacement = "https://example.org/mel-nova.jpg";
-            animals.update(id, request, replacement);
-            animals.update(id, request, null);
+            animals.update(id, request, replacement, null);
+            animals.update(id, request, null, null);
             assertThat(animals.findById(id)).get().extracting(AnimalResponse::photoUrl).isEqualTo(replacement);
+
+            byte[] content = {1, 2, 3};
+            animals.update(id, request, null, new AnimalPhoto(content, "image/png"));
+            assertThat(animals.findById(id)).get().extracting(AnimalResponse::photoUrl)
+                    .asString().startsWith("/api/animais/" + id + "/foto?v=");
+            assertThat(animals.findUploadedPhoto(id)).get().satisfies(photo -> {
+                assertThat(photo.content()).isEqualTo(content);
+                assertThat(photo.contentType()).isEqualTo("image/png");
+            });
+            animals.update(id, request, replacement, null);
+            assertThat(animals.findUploadedPhoto(id)).isEmpty();
         } finally {
             animals.delete(id);
         }

@@ -5,7 +5,9 @@ import java.net.URISyntaxException;
 import java.util.List;
 
 import jakarta.validation.Valid;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -49,6 +51,17 @@ public class AnimalController {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Animal not found"));
     }
 
+    @GetMapping("/{id}/foto")
+    public ResponseEntity<byte[]> findPhoto(@PathVariable int id) {
+        AnimalPhoto photo = animalRepository.findUploadedPhoto(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Foto não encontrada"));
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(photo.contentType()))
+                .cacheControl(CacheControl.noStore())
+                .header("X-Content-Type-Options", "nosniff")
+                .body(photo.content());
+    }
+
     @GetMapping("/resumo-por-especie")
     public List<AnimalSpeciesSummary> summarizeBySpecies(
             @RequestParam(required = false) String species,
@@ -76,7 +89,7 @@ public class AnimalController {
     @ResponseStatus(HttpStatus.CREATED)
     public AnimalResponse create(@Valid @RequestBody AnimalRequest request) {
         validateReferences(request);
-        int id = animalRepository.create(request, validatePhotoUrl(request.photoUrl()));
+        int id = animalRepository.create(request, validatePhotoUrl(request.photoUrl()), readPhoto(request));
         return animalRepository.findById(id)
                 .orElseThrow(() -> new IllegalStateException("Created animal not found"));
     }
@@ -85,7 +98,7 @@ public class AnimalController {
     public AnimalResponse update(@PathVariable int id, @Valid @RequestBody AnimalRequest request) {
         findById(id);
         validateReferences(request);
-        animalRepository.update(id, request, validatePhotoUrl(request.photoUrl()));
+        animalRepository.update(id, request, validatePhotoUrl(request.photoUrl()), readPhoto(request));
         return findById(id);
     }
 
@@ -113,6 +126,16 @@ public class AnimalController {
 
     private static Boolean parseAvailability(String value) {
         return value == null ? null : Boolean.valueOf(QueryParameter.option("available", value, "true", "false"));
+    }
+
+    private static AnimalPhoto readPhoto(AnimalRequest request) {
+        if (request.photoData() == null) {
+            return null;
+        }
+        if (request.photoUrl() != null && !request.photoUrl().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Escolha um arquivo ou informe uma URL.");
+        }
+        return AnimalPhoto.decode(request.photoData());
     }
 
     private static String validatePhotoUrl(String value) {

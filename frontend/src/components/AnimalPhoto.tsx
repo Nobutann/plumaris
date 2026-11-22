@@ -12,6 +12,7 @@ function parsePhotoUrl(value: string | null) {
 }
 
 function photoSources(value: string | null) {
+  if (value && /^\/api\/animais\/\d+\/foto\?v=[a-f0-9-]{36}$/.test(value)) return [value]
   const url = parsePhotoUrl(value)
   if (!url) return []
 

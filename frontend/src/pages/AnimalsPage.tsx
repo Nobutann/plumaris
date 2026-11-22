@@ -88,14 +88,15 @@ export function AnimalsPage({ animals, breeds, centers, refresh }: AnimalsPagePr
       && (availabilityFilter === 'all' || String(animal.available) === availabilityFilter)
   })
 
-  async function save(input: AnimalInput, photoUrl?: string) {
+  async function save(input: AnimalInput, photoUrl?: string, file?: File) {
     setBusy(true)
     setError('')
     try {
+      const photoData = file ? await encodePhoto(file) : undefined
       if (editor === 'new') {
-        await api.createAnimal(input, photoUrl)
+        await api.createAnimal(input, photoUrl, photoData)
       } else if (editor) {
-        await api.updateAnimal(editor.id, input, photoUrl)
+        await api.updateAnimal(editor.id, input, photoUrl, photoData)
       }
       setEditor(null)
       await refresh()
@@ -229,16 +230,28 @@ function AnimalName({ animal }: { animal: Animal }) {
   )
 }
 
+function encodePhoto(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result).split(',', 2)[1])
+    reader.onerror = () => reject(new Error('Não foi possível ler o arquivo da foto.'))
+    reader.readAsDataURL(file)
+  })
+}
+
 function AnimalForm({ animal, breeds, centers, busy, onCancel, onSave }: {
   animal: Animal | null
   breeds: Breed[]
   centers: Center[]
   busy: boolean
   onCancel: () => void
-  onSave: (input: AnimalInput, photoUrl?: string) => Promise<void>
+  onSave: (input: AnimalInput, photoUrl?: string, file?: File) => Promise<void>
 }) {
   const [draft, setDraft] = useState(() => draftFromAnimal(animal))
   const [photoUrl, setPhotoUrl] = useState('')
+  const [photoFile, setPhotoFile] = useState<File>()
+  const [fileError, setFileError] = useState('')
+  const photoFileRef = useRef<HTMLInputElement>(null)
   const matchingBreeds = breeds.filter((breed) => breed.species === draft.species)
 
   function update<Key extends keyof AnimalDraft>(key: Key, value: AnimalDraft[Key]) {
@@ -259,7 +272,7 @@ function AnimalForm({ animal, breeds, centers, busy, onCancel, onSave }: {
       centerId: Number(draft.centerId),
       breedId: draft.breedId ? Number(draft.breedId) : null,
     }
-    void onSave(input, photoUrl.trim() || undefined)
+    void onSave(input, photoFile ? undefined : photoUrl.trim() || undefined, photoFile)
   }
 
   return (
@@ -313,16 +326,46 @@ function AnimalForm({ animal, breeds, centers, busy, onCancel, onSave }: {
           type="url"
           maxLength={500}
           placeholder="https://exemplo.com/foto.jpg"
+          disabled={Boolean(photoFile) || busy}
           value={photoUrl}
           onChange={(event) => setPhotoUrl(event.target.value)}
         />
         <span className="mt-1 block text-xs font-normal text-muted">Cole o endereço da imagem ou o link do resultado no Google Imagens.</span>
       </label>
+      <label className={labelClass}>Foto do computador (opcional)
+        <input
+          className={`${fieldClass} mt-1.5`}
+          ref={photoFileRef}
+          type="file"
+          accept="image/jpeg,image/png"
+          disabled={busy}
+          onChange={(event) => {
+            const file = event.target.files?.[0]
+            if (file && file.size > 3 * 1024 * 1024) {
+              setFileError('A foto deve ter no máximo 3 MB.')
+              event.target.value = ''
+              setPhotoFile(undefined)
+              return
+            }
+            setFileError('')
+            setPhotoFile(file)
+          }}
+        />
+        <span className="mt-1 block text-xs font-normal text-muted">JPEG ou PNG, até 3 MB.</span>
+      </label>
+      {fileError && <ErrorMessage message={fileError} />}
+      {(photoFile || fileError) && (
+        <button type="button" disabled={busy} className={secondaryButtonClass} onClick={() => {
+          if (photoFileRef.current) photoFileRef.current.value = ''
+          setPhotoFile(undefined)
+          setFileError('')
+        }}>Limpar arquivo selecionado</button>
+      )}
       <label className={labelClass}>Descrição
         <textarea className={`${fieldClass} mt-1.5 min-h-24 resize-y`} value={draft.description} onChange={(event) => update('description', event.target.value)} />
       </label>
       <div className="flex flex-wrap gap-2 border-t border-line pt-4">
-        <button type="submit" disabled={busy} className={primaryButtonClass}>{busy ? 'Salvando...' : 'Salvar animal'}</button>
+        <button type="submit" disabled={busy || Boolean(fileError)} className={primaryButtonClass}>{busy ? 'Salvando...' : 'Salvar animal'}</button>
         <button type="button" disabled={busy} onClick={onCancel} className={secondaryButtonClass}>Cancelar</button>
       </div>
     </form>

@@ -40,7 +40,7 @@ public class AnimalRepository {
                 c.nome AS centroNome,
                 a.idRaca,
                 r.nome AS racaNome,
-                (SELECT f.url FROM Foto_Animal f
+                (SELECT COALESCE(f.url, CONCAT('/api/animais/', a.idAnimal, '/foto?v=', f.versao)) FROM Foto_Animal f
                     WHERE f.idAnimal = a.idAnimal ORDER BY f.numeroFoto LIMIT 1) AS fotoUrl
             FROM Animal a
             JOIN Centro_Adocao c ON c.idConta = a.idCentro
@@ -64,7 +64,7 @@ public class AnimalRepository {
                 c.nome AS centroNome,
                 a.idRaca,
                 r.nome AS racaNome,
-                (SELECT f.url FROM Foto_Animal f
+                (SELECT COALESCE(f.url, CONCAT('/api/animais/', a.idAnimal, '/foto?v=', f.versao)) FROM Foto_Animal f
                     WHERE f.idAnimal = a.idAnimal ORDER BY f.numeroFoto LIMIT 1) AS fotoUrl
             FROM Animal a
             JOIN Centro_Adocao c ON c.idConta = a.idCentro
@@ -115,7 +115,7 @@ public class AnimalRepository {
                 c.nome AS centroNome,
                 a.idRaca,
                 r.nome AS racaNome,
-                (SELECT f.url FROM Foto_Animal f
+                (SELECT COALESCE(f.url, CONCAT('/api/animais/', a.idAnimal, '/foto?v=', f.versao)) FROM Foto_Animal f
                     WHERE f.idAnimal = a.idAnimal ORDER BY f.numeroFoto LIMIT 1) AS fotoUrl
             FROM Preferencia p
             JOIN Animal a ON a.disponibilidade = 1
@@ -258,12 +258,12 @@ public class AnimalRepository {
         }
     }
 
-    public int create(AnimalRequest request, String photoUrl) {
+    public int create(AnimalRequest request, String photoUrl, AnimalPhoto photo) {
         try (Connection connection = connectionFactory.openConnection()) {
             connection.setAutoCommit(false);
             try {
                 int id = insertAnimal(connection, request);
-                savePhoto(connection, id, photoUrl);
+                savePhoto(connection, id, photoUrl, photo);
                 connection.commit();
                 return id;
             } catch (SQLException | RuntimeException exception) {
@@ -288,7 +288,7 @@ public class AnimalRepository {
         }
     }
 
-    public void update(int id, AnimalRequest request, String photoUrl) {
+    public void update(int id, AnimalRequest request, String photoUrl, AnimalPhoto photo) {
         try (Connection connection = connectionFactory.openConnection();
                 PreparedStatement statement = connection.prepareStatement(UPDATE_SQL)) {
             connection.setAutoCommit(false);
@@ -296,7 +296,7 @@ public class AnimalRepository {
                 bindAnimal(statement, request);
                 statement.setInt(11, id);
                 statement.executeUpdate();
-                savePhoto(connection, id, photoUrl);
+                savePhoto(connection, id, photoUrl, photo);
                 connection.commit();
             } catch (SQLException | RuntimeException exception) {
                 rollback(connection, exception);
@@ -307,18 +307,38 @@ public class AnimalRepository {
         }
     }
 
-    private static void savePhoto(Connection connection, int id, String photoUrl) throws SQLException {
-        if (photoUrl == null) {
+    private static void savePhoto(Connection connection, int id, String photoUrl, AnimalPhoto photo) throws SQLException {
+        if (photoUrl == null && photo == null) {
             return;
         }
         try (PreparedStatement statement = connection.prepareStatement("""
-                INSERT INTO Foto_Animal (idAnimal, numeroFoto, url) VALUES (?, 1, ?)
-                ON DUPLICATE KEY UPDATE url = ?
+                INSERT INTO Foto_Animal (idAnimal, numeroFoto, url, conteudo, tipoConteudo, versao)
+                VALUES (?, 1, ?, ?, ?, UUID()) AS novaFoto
+                ON DUPLICATE KEY UPDATE url = novaFoto.url, conteudo = novaFoto.conteudo,
+                    tipoConteudo = novaFoto.tipoConteudo, versao = novaFoto.versao
                 """)) {
             statement.setInt(1, id);
             statement.setString(2, photoUrl);
-            statement.setString(3, photoUrl);
+            statement.setBytes(3, photo == null ? null : photo.content());
+            statement.setString(4, photo == null ? null : photo.contentType());
             statement.executeUpdate();
+        }
+    }
+
+    public Optional<AnimalPhoto> findUploadedPhoto(int id) {
+        try (Connection connection = connectionFactory.openConnection();
+                PreparedStatement statement = connection.prepareStatement("""
+                        SELECT conteudo, tipoConteudo FROM Foto_Animal
+                        WHERE idAnimal = ? AND numeroFoto = 1 AND conteudo IS NOT NULL
+                        """)) {
+            statement.setInt(1, id);
+            try (ResultSet results = statement.executeQuery()) {
+                return results.next()
+                        ? Optional.of(new AnimalPhoto(results.getBytes("conteudo"), results.getString("tipoConteudo")))
+                        : Optional.empty();
+            }
+        } catch (SQLException exception) {
+            throw DatabaseException.from(exception);
         }
     }
 

@@ -20,7 +20,8 @@ public record AnimalRequest(
         @NotNull Boolean available,
         @NotNull @Positive Integer centerId,
         @Positive Integer breedId,
-        @Size(max = 500) String photoUrl
+        @Size(max = 500) String photoUrl,
+        @Size(max = 4194304) String photoData
 ) {
 
     public String normalizedName() {

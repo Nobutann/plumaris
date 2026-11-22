@@ -119,11 +119,19 @@ CREATE TABLE Animal (
 CREATE TABLE Foto_Animal (
     idAnimal INT NOT NULL,
     numeroFoto INT NOT NULL,
-    url VARCHAR(500) NOT NULL,
+    url VARCHAR(500),
     descricao VARCHAR(255),
+    conteudo MEDIUMBLOB,
+    tipoConteudo VARCHAR(10),
+    versao CHAR(36),
     CONSTRAINT pk_foto PRIMARY KEY (idAnimal, numeroFoto),
     CONSTRAINT ck_foto_numero CHECK (numeroFoto > 0),
     CONSTRAINT ck_foto_url CHECK (url LIKE 'https://_%' OR url LIKE 'http://_%'),
+    CONSTRAINT ck_foto_origem CHECK (
+        (url IS NOT NULL AND conteudo IS NULL AND tipoConteudo IS NULL)
+        OR (url IS NULL AND conteudo IS NOT NULL AND tipoConteudo IS NOT NULL
+            AND tipoConteudo IN ('image/jpeg', 'image/png'))
+    ),
     CONSTRAINT fk_foto_animal FOREIGN KEY (idAnimal) REFERENCES Animal(idAnimal)
         ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
