@@ -56,6 +56,10 @@ function draftFromAnimal(animal: Animal | null): AnimalDraft {
   }
 }
 
+function normalizeSearch(value: string) {
+  return value.toLocaleLowerCase('pt-BR').normalize('NFD').replace(/\p{M}/gu, '')
+}
+
 export function AnimalsPage({ animals, breeds, centers, refresh }: AnimalsPageProps) {
   const [search, setSearch] = useState('')
   const [speciesFilter, setSpeciesFilter] = useState('all')
@@ -78,11 +82,11 @@ export function AnimalsPage({ animals, breeds, centers, refresh }: AnimalsPagePr
     if (editor === target) editorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
-  const term = search.trim().toLocaleLowerCase('pt-BR')
+  const term = normalizeSearch(search.trim())
   const searching = term.length > 0
   const filteredAnimals = animals.filter((animal) => {
     const matchesSearch = !term || [animal.name, animal.breedName, animal.centerName, String(animal.id)]
-      .some((value) => value?.toLocaleLowerCase('pt-BR').includes(term))
+      .some((value) => normalizeSearch(value ?? '').includes(term))
     return matchesSearch
       && (speciesFilter === 'all' || animal.species === speciesFilter)
       && (availabilityFilter === 'all' || String(animal.available) === availabilityFilter)
